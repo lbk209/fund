@@ -1,69 +1,85 @@
-import dash
-from dash import dcc, html
-from dash.dependencies import Input, Output
-import numpy as np
+from dash import Dash, html, dcc, callback, Output, Input
+import pandas as pd
+import plotly.express as px
+
+# Load data
+file = 'fund_241228.csv'
+path = 'data'
+df_prc = pd.read_csv(
+    f'{path}/{file}',
+    parse_dates=['date'],
+    dtype={'ticker': str},
+    index_col=['group', 'ticker', 'date']
+)
+
+groups = df_prc.index.get_level_values('group').unique()
+default_group = groups[-1]
+groups = [{'label': f'TDF{x}', 'value': x} for x in groups]
+
+# Prepare the JSON data
+df_json = df_prc.reset_index().to_json(date_format='iso', orient='records')
 
 # Initialize the Dash app
-app = dash.Dash(__name__)
+app = Dash(__name__)
 
-# Sample data
-categories = ['A', 'B', 'C', 'D']
-values1 = np.random.randint(10, 100, size=4)
-values2 = np.random.randint(10, 100, size=4)
-
-# App layout
 app.layout = html.Div([
-    dcc.Graph(id='bar-chart'),
     dcc.Dropdown(
-        id='chart-type-dropdown',
-        options=[
-            {'label': 'Grouped', 'value': 'group'},
-            {'label': 'Stacked', 'value': 'stack'}
-        ],
-        value='group',  # Default value
+        id='group-dropdown',
+        options=groups,
+        value=default_group,  # Default value
         clearable=False,
         style={'width': '50%'}
     ),
-    dcc.Store(id='bar-data', data={'categories': categories, 'values1': list(values1), 'values2': list(values2)})
+    dcc.Graph(id='price-plot'),
+    # Store DataFrame in JSON format
+    dcc.Store(id='price-data', data=df_json)
 ])
 
-# Client-side callback (JavaScript function)
+# Define client-side callback
 app.clientside_callback(
     """
-    function(chartType, data) {
-        var categories = data.categories;
-        var values1 = data.values1;
-        var values2 = data.values2;
+    function(group, jsonData) {
+        // Parse the JSON data
+        const data = JSON.parse(jsonData);
+        
+        // Filter the data for the selected group
+        const filteredData = data.filter(row => row.group === group);
 
-        var barmode = chartType === 'stack' ? 'stack' : 'group';
+        // Organize data by ticker
+        const tickerData = {};
+        filteredData.forEach(row => {
+            if (!tickerData[row.ticker]) {
+                tickerData[row.ticker] = { x: [], y: [] };
+            }
+            tickerData[row.ticker].x.push(row.date);
+            tickerData[row.ticker].y.push(row.price);
+        });
 
+        // Prepare traces for the plot
+        const traces = Object.keys(tickerData).map(ticker => ({
+            x: tickerData[ticker].x,
+            y: tickerData[ticker].y,
+            type: 'scatter',
+            mode: 'lines',
+            name: ticker
+        }));
+
+        // Return the figure object
         return {
-            'data': [
-                {
-                    'x': categories,
-                    'y': values1,
-                    'type': 'bar',
-                    'name': 'Series 1'
-                },
-                {
-                    'x': categories,
-                    'y': values2,
-                    'type': 'bar',
-                    'name': 'Series 2'
-                }
-            ],
-            'layout': {
-                'title': `Bar Chart (${chartType === 'stack' ? 'Stacked' : 'Grouped'})`,
-                'barmode': barmode
+            data: traces,
+            layout: {
+                title: `Price Plot for Group ${group}`,
+                xaxis: { title: 'Date' },
+                yaxis: { title: 'Price' }
             }
         };
     }
     """,
-    Output('bar-chart', 'figure'),
-    [Input('chart-type-dropdown', 'value')],
-    [Input('bar-data', 'data')]
+    Output('price-plot', 'figure'),
+    Input('group-dropdown', 'value'),
+    Input('price-data', 'data')
 )
 
 # Run the app
 if __name__ == '__main__':
-    app.run_server(debug=False)
+    app.run_server(debug=True)
