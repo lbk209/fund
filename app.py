@@ -4,8 +4,9 @@ import plotly.express as px
 
 # Load data
 file = 'fund_241228.csv'
+path = 'data'
 df_prc = pd.read_csv(
-    file,
+    f'{path}/{file}',
     parse_dates=['date'],
     dtype={'ticker': str},
     index_col=['group', 'ticker', 'date']
