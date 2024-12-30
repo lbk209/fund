@@ -7,12 +7,17 @@ import json
 
 # Load data
 file = 'fund_241229.csv'
+path = '.'
 df_prc = pd.read_csv(
-    file,
+    f'{path}/{file}',
     parse_dates=['date'],
     dtype={'ticker': str},
     index_col=['group', 'ticker', 'date']
 )
+
+file = 'fund_name_241230.csv'
+fund_name = pd.read_csv(f'{path}/{file}', dtype={'ticker': str}, index_col=[0])
+fund_name = fund_name.iloc[:,0].to_dict()
 
 groups = df_prc.index.get_level_values('group').unique()
 default_group = 2030
@@ -61,7 +66,7 @@ app.layout = dbc.Container([
         placement='bottom'
     ),
     dbc.Tooltip(
-        '비용 고려',
+        '수수료 적용',
         target='cost-boolean-switch',
         placement='bottom'
     )
@@ -69,19 +74,21 @@ app.layout = dbc.Container([
 
 # Preprocess data to make it JSON-serializable and store it in a JavaScript variable
 preprocessed_data = {}
+df_prc.columns = ['수수료 적용 전', '수수료 적용 후']
+cols = df_prc.columns
 date_format = '%Y-%m-%d'
 for group in groups:
     group_value = group['value']
-    cols = df_prc.columns
     data = {'columns': list(cols), 'default': {}, 'compare': {}}
     start = None
     for col in cols:
         df_p = df_prc.loc[group_value, col].unstack('ticker').sort_index()
+        df_p.columns = [fund_name[x] for x in df_p.columns]
         df_r = df_p.apply(lambda x: x.dropna().iloc[-1]/x.dropna().iloc[0]-1).mul(100).to_frame(col)
         data['default'][col] = {
             'history': df_p.round().to_dict('records'),
             'index': df_p.index.strftime(date_format).tolist(),
-            'return': df_r.to_dict('records'),
+            'return': df_r.round(1).to_dict('records'),
             'ticker': df_r.index.tolist()
         }
         if start is None:
@@ -91,7 +98,7 @@ for group in groups:
         data['compare'][col] = {
             'history': normalized_df.round().to_dict('records'),
             'index': normalized_df.index.strftime(date_format).tolist(),
-            'return': df_r_n.to_dict('records'),
+            'return': df_r_n.round(1).to_dict('records'),
             'ticker': df_r.index.tolist()
         }
     preprocessed_data[group_value] = data
@@ -156,14 +163,14 @@ app.clientside_callback(
                 y: yValues,          // Price history for each ticker
                 type: 'scatter',
                 mode: 'lines',
-                name: ticker         // Ticker as the legend name
+                name: ticker        // Ticker as the legend name
             };
         });
 
         // Title logic
         const titleBase = '펀드 가격 추이';
         const titleComp = compare ? '상대 가격' : '펀드별 최근 결산 기준가격으로 계산';
-        const titleCost = cost ? '비용 고려' : null;
+        const titleCost = cost ? '수수료 적용' : null;
 
         let title = `${titleBase} (${titleComp}`;
         title = titleCost ? `${title}, ${titleCost})` : `${title})`;
@@ -174,7 +181,8 @@ app.clientside_callback(
                 title: { text: title, x: 0 },
                 //xaxis: { title: 'Date' },
                 yaxis: { title: '기준가격' },
-                //height: 300
+                //height: 300,
+                hovermode: 'x'
             }
         };
     }
@@ -248,7 +256,9 @@ app.clientside_callback(
                 //xaxis: { title: 'Tickers' },
                 yaxis: { title: '수익률(%)' },
                 barmode: 'group', // Grouped bar chart
-                //height: 300
+                //height: 300,
+                hovermode: 'x',
+                //hovertemplate='%{y:.0f}%'
             }
         };
     }
