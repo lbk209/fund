@@ -2,6 +2,8 @@ name: Deploy app
 run-name: Deploy HTML pages generated from Dash app
 on:
   push:
+    branches:
+      - 'main'
     paths:
       - 'app.py'
       - '**.csv'
