@@ -183,7 +183,7 @@ app.clientside_callback(
                 title: { text: title, x: 0 },
                 //xaxis: { title: 'Date' },
                 yaxis: { title: '기준가격' },
-                height: 600,
+                //height: 500,
                 hovermode: 'x'
             }
         };
@@ -258,7 +258,7 @@ app.clientside_callback(
                 //xaxis: { title: 'Tickers' },
                 yaxis: { title: '수익률(%)' },
                 barmode: 'group', // Grouped bar chart
-                height: 400,
+                //height: 400,
                 hovermode: 'x',
                 //hovertemplate='%{y:.0f}%'
             }
