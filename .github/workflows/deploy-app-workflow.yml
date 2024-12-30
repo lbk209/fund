@@ -1,6 +1,12 @@
 name: Deploy app
 run-name: Deploy HTML pages generated from Dash app
-on: [push]
+on:
+  push:
+    paths:
+      - 'app.py'
+      - '**.csv'
+      - 'requirements.txt'
+      - 'assets'
 jobs:
 
   run_app:
@@ -40,6 +46,7 @@ jobs:
           path: "./pages_files"
 
   deploy-pages:
+    name: 'Deploy pages'
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     needs: run_app
