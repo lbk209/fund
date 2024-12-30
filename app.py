@@ -20,7 +20,8 @@ groups = [{'label': f'TDF{x}', 'value': x} for x in groups]
 
 # Initialize the Dash app
 external_stylesheets = [dbc.themes.CERULEAN]
-app = Dash(__name__, external_stylesheets=external_stylesheets)
+app = Dash(__name__, title="달달펀드",
+           external_stylesheets=external_stylesheets)
 
 app.layout = dbc.Container([
     dbc.Row([
@@ -160,7 +161,7 @@ app.clientside_callback(
 
         // Title logic
         const titleBase = '펀드 가격 추이';
-        const titleComp = compare ? '상대 가격' : '펀드별 최종 결산 기준 가격으로 계산';
+        const titleComp = compare ? '상대 가격' : '펀드별 최근 결산 기준가격으로 계산';
         const titleCost = cost ? '비용 고려' : null;
 
         let title = `${titleBase} (${titleComp}`;
