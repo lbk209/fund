@@ -24,6 +24,7 @@ app = Dash(__name__, title="달달펀드",
            external_stylesheets=external_stylesheets)
 
 app.layout = dbc.Container([
+    html.Br(),
     dbc.Row([
         dbc.Col(
             dcc.Dropdown(
@@ -103,7 +104,6 @@ app.index_string = f"""
     <head>
         {{%metas%}}
         <title>{{%title%}}</title>
-        {{%favicon%}}
         {{%css%}}
     </head>
     <body>
