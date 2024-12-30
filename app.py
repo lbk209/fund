@@ -1,6 +1,5 @@
 from dash import Dash, html, dcc, Output, Input
 import pandas as pd
-import plotly.express as px
 import dash_bootstrap_components as dbc
 import dash_daq as daq
 import json
@@ -170,7 +169,8 @@ app.clientside_callback(
                 y: yValues,          // Price history for each ticker
                 type: 'scatter',
                 mode: 'lines',
-                name: ticker        // Ticker as the legend name
+                name: ticker,        // Ticker as the legend name
+                showlegend: true
             };
         });
 
