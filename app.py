@@ -29,6 +29,12 @@ external_stylesheets = [dbc.themes.CERULEAN]
 app = Dash(__name__, title="달달펀드",
            external_stylesheets=external_stylesheets)
 
+
+tabs = dbc.Tabs([
+    dbc.Tab(dcc.Graph(id='price-plot'), label='가격'),
+    dbc.Tab(dcc.Graph(id='return-plot'), label='수익률'),
+])
+
 app.layout = dbc.Container([
     html.Br(),
     dbc.Row([
@@ -58,8 +64,7 @@ app.layout = dbc.Container([
         align="center",
         className="mb-3"
     ),
-    dbc.Row(dcc.Graph(id='price-plot')),
-    dbc.Row(dcc.Graph(id='return-plot')),
+    dbc.Row(tabs),
     html.Br(),
     dcc.Store(id='price-data'),
     dbc.Tooltip(
@@ -181,10 +186,28 @@ app.clientside_callback(
             data: traces,
             layout: {
                 title: { text: title, x: 0 },
-                //xaxis: { title: 'Date' },
+                hovermode: 'x',
                 yaxis: { title: '기준가격' },
-                height: 600,
-                hovermode: 'x'
+                xaxis: {
+                    rangeselector: {
+                        buttons: [
+                            {
+                                count: 3,
+                                label: "3y",
+                                step: "year",
+                                stepmode: "backward"
+                            },
+                            {
+                                step: "all",
+                                label: "All"
+                            }
+                        ]
+                    },
+                    rangeslider: {
+                        visible: true
+                    },
+                    type: "date"
+                }
             }
         };
     }
@@ -258,7 +281,7 @@ app.clientside_callback(
                 //xaxis: { title: 'Tickers' },
                 yaxis: { title: '수익률(%)' },
                 barmode: 'group', // Grouped bar chart
-                height: 400,
+                //height: 400,
                 hovermode: 'x',
                 //hovertemplate='%{y:.0f}%'
             }
