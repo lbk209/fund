@@ -104,6 +104,7 @@ app.index_string = f"""
     <head>
         {{%metas%}}
         <title>{{%title%}}</title>
+        <link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
         {{%css%}}
     </head>
     <body>
