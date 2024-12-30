@@ -8,6 +8,7 @@ import json
 # Load data
 file = 'fund_241229.csv'
 path = '.'
+#path = '.'
 df_prc = pd.read_csv(
     f'{path}/{file}',
     parse_dates=['date'],
@@ -59,6 +60,7 @@ app.layout = dbc.Container([
     ),
     dbc.Row(dcc.Graph(id='price-plot')),
     dbc.Row(dcc.Graph(id='return-plot')),
+    html.Br(),
     dcc.Store(id='price-data'),
     dbc.Tooltip(
         '상대 비교',
@@ -181,7 +183,7 @@ app.clientside_callback(
                 title: { text: title, x: 0 },
                 //xaxis: { title: 'Date' },
                 yaxis: { title: '기준가격' },
-                //height: 300,
+                height: 600,
                 hovermode: 'x'
             }
         };
@@ -256,7 +258,7 @@ app.clientside_callback(
                 //xaxis: { title: 'Tickers' },
                 yaxis: { title: '수익률(%)' },
                 barmode: 'group', // Grouped bar chart
-                //height: 300,
+                height: 400,
                 hovermode: 'x',
                 //hovertemplate='%{y:.0f}%'
             }
