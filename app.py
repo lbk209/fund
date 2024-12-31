@@ -8,11 +8,11 @@ file_prc = 'fund_monthly_241229.csv'
 file_name = 'fund_name_241230.csv'
 path = '.'
 
-date_format = '%Y-%m-%d'
+email_info = 'leebaekku209@gmail.com'
 default_group = 2030
 base_prc = 1000
+date_format = '%Y-%m-%d'
 months_in_year = 12
-
 cols_prc = ['수수료 적용 전', '수수료 적용 후']
 
 
@@ -32,15 +32,43 @@ groups = df_prc.index.get_level_values('group').unique()
 groups = [{'label': f'TDF{x}', 'value': x} for x in groups]
 
 # Initialize the Dash app
-external_stylesheets = [dbc.themes.CERULEAN]
+external_stylesheets = [dbc.themes.CERULEAN, 
+                        #dbc.themes.BOOTSTRAP,
+                        dbc.icons.FONT_AWESOME,
+                        dbc.icons.BOOTSTRAP]
 app = Dash(__name__, title="달달펀드",
            external_stylesheets=external_stylesheets)
 
+disclaimer = """
+본 사이트는 투자 권유를 제공하지 않으며, 제공되는 정보의 정확성과 완전성을 보장하지 않습니다. 수수료와 세금은 수익률에 영향을 미칠 수 있으며, 투자 결정 및 그에 따른 결과는 전적으로 투자자 본인의 책임입니다.
+"""
 
-tabs = dbc.Tabs([
+tab_info = html.Div([
+    html.P(),
+    dbc.Alert([
+        html.I(className="bi bi-info-circle-fill me-2"),
+        disclaimer,
+        ],
+        color="info",
+        className="d-flex align-items-center",
+    ),
+    #html.P(disclaimer),
+    html.P([
+        #html.Div('문의'),
+        html.I(className="fa-solid fa-envelope", style={"margin-right": "10px"}),
+        html.A(email_info, href=f"mailto:{email_info}?Subject=달달펀드:문의")
+    ])
+], style={'fontSize': 14})
+
+tab_topic = '테스트'
+
+tabs_contents = [
     dbc.Tab(dcc.Graph(id='price-plot'), label='가격'),
     dbc.Tab(dcc.Graph(id='return-plot'), label='수익률'),
-])
+    dbc.Tab(tab_topic, label='토픽'),
+    dbc.Tab(tab_info, label='정보')
+]
+tabs = dbc.Tabs(tabs_contents)
 
 app.layout = dbc.Container([
     html.Br(),
@@ -84,7 +112,8 @@ app.layout = dbc.Container([
         target='cost-boolean-switch',
         placement='bottom'
     )
-])
+], fluid=True)  # Full-width container
+
 
 # Preprocess data to make it JSON-serializable and store it in a JavaScript variable
 preprocessed_data = {}
@@ -195,7 +224,7 @@ app.clientside_callback(
 
         // Title logic
         const titleBase = '펀드 가격 추이';
-        const titleComp = compare ? '상대 가격' : '펀드별 최근 결산 기준가격으로 계산';
+        const titleComp = compare ? '상대 가격' : '펀드별 최근 결산 기준가격';
         const titleCost = cost ? '수수료 적용' : null;
 
         let title = `${titleBase} (${titleComp}`;
@@ -226,7 +255,8 @@ app.clientside_callback(
                         visible: true
                     },
                     type: "date"
-                }
+                },
+                responsive: true
             }
         };
     }
@@ -302,7 +332,8 @@ app.clientside_callback(
                 barmode: 'group', // Grouped bar chart
                 //height: 400,
                 hovermode: 'x',
-                //hovertemplate='%{y:.0f}%'
+                //hovertemplate='%{y:.0f}%',
+                responsive: true
             }
         };
     }
