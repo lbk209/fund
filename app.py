@@ -4,23 +4,31 @@ import dash_bootstrap_components as dbc
 import dash_daq as daq
 import json
 
-# Load data
-file = 'fund_241229.csv'
+file_prc = 'fund_monthly_241229.csv'
+file_name = 'fund_name_241230.csv'
 path = '.'
-#path = '.'
+
+date_format = '%Y-%m-%d'
+default_group = 2030
+base_prc = 1000
+months_in_year = 12
+
+cols_prc = ['수수료 적용 전', '수수료 적용 후']
+
+
+# Load price data
 df_prc = pd.read_csv(
-    f'{path}/{file}',
+    f'{path}/{file_prc}',
     parse_dates=['date'],
     dtype={'ticker': str},
     index_col=['group', 'ticker', 'date']
 )
 
-file = 'fund_name_241230.csv'
-fund_name = pd.read_csv(f'{path}/{file}', dtype={'ticker': str}, index_col=[0])
+# Load fund names
+fund_name = pd.read_csv(f'{path}/{file_name}', dtype={'ticker': str}, index_col=[0])
 fund_name = fund_name.iloc[:,0].to_dict()
 
 groups = df_prc.index.get_level_values('group').unique()
-default_group = 2030
 groups = [{'label': f'TDF{x}', 'value': x} for x in groups]
 
 # Initialize the Dash app
@@ -80,9 +88,8 @@ app.layout = dbc.Container([
 
 # Preprocess data to make it JSON-serializable and store it in a JavaScript variable
 preprocessed_data = {}
-df_prc.columns = ['수수료 적용 전', '수수료 적용 후']
+df_prc.columns = cols_prc
 cols = df_prc.columns
-date_format = '%Y-%m-%d'
 for group in groups:
     group_value = group['value']
     data = {'columns': list(cols), 'default': {}, 'compare': {}}
@@ -90,7 +97,13 @@ for group in groups:
     for col in cols:
         df_p = df_prc.loc[group_value, col].unstack('ticker').sort_index()
         df_p.columns = [fund_name[x] for x in df_p.columns]
-        df_r = df_p.apply(lambda x: x.dropna().iloc[-1]/x.dropna().iloc[0]-1).mul(100).to_frame(col)
+        
+        sr_n = df_p.apply(lambda x: x.dropna().count()) # num of months for each ticker
+        df_r = (df_p.apply(lambda x: x.dropna().iloc[-1]/x.dropna().iloc[0]-1) # total return
+                .to_frame('ttr').join(sr_n.rename('n'))
+                .apply(lambda x: (1+x['ttr']) ** (months_in_year/x['n']) - 1, axis=1) # CAGR
+                .mul(100).to_frame(col))
+        
         data['default'][col] = {
             'history': df_p.round().to_dict('records'),
             'index': df_p.index.strftime(date_format).tolist(),
@@ -99,8 +112,14 @@ for group in groups:
         }
         if start is None:
             start = df_p.apply(lambda x: x[x.notna()].index.min()).max()
-        normalized_df = df_p.apply(lambda x: x / x.loc[start] * 1000).loc[start:]
-        df_r_n = normalized_df.apply(lambda x: x.dropna().iloc[-1]/x.dropna().iloc[0]-1).mul(100).to_frame(col)
+        normalized_df = df_p.apply(lambda x: x / x.loc[start] * base_prc).loc[start:]
+        
+        sr_n = normalized_df.apply(lambda x: x.dropna().count()) # num of months for each ticker
+        df_r_n = (normalized_df.apply(lambda x: x.dropna().iloc[-1]/x.dropna().iloc[0]-1) # total return
+                  .to_frame('ttr').join(sr_n.rename('n'))
+                  .apply(lambda x: (1+x['ttr']) ** (months_in_year/x['n']) - 1, axis=1) # CAGR
+                  .mul(100).to_frame(col))
+
         data['compare'][col] = {
             'history': normalized_df.round().to_dict('records'),
             'index': normalized_df.index.strftime(date_format).tolist(),
@@ -187,7 +206,7 @@ app.clientside_callback(
             layout: {
                 title: { text: title, x: 0 },
                 hovermode: 'x',
-                yaxis: { title: '기준가격' },
+                yaxis: { title: '가격' },
                 xaxis: {
                     rangeselector: {
                         buttons: [
@@ -269,9 +288,9 @@ app.clientside_callback(
             const dates = dat[sel].index;
             const dt0 = new Date(Math.min(...dates.map(d => new Date(d).getTime()))).toISOString().slice(0, 10);
             const dt1 = new Date(Math.max(...dates.map(d => new Date(d).getTime()))).toISOString().slice(0, 10);
-            title = `펀드 수익률 (${dt0} ~ ${dt1})`;
+            title = `펀드 연평균 수익률 (${dt0} ~ ${dt1})`;
         } else {
-            title = '펀드 수익률 (펀드별 설정일 이후)';
+            title = '펀드 연평균 수익률 (펀드별 설정일 이후)';
         }
 
         return {
@@ -279,7 +298,7 @@ app.clientside_callback(
             layout: {
                 title: { text: title, x: 0 }, // Align title to the left
                 //xaxis: { title: 'Tickers' },
-                yaxis: { title: '수익률(%)' },
+                yaxis: { title: '연평균 수익률 (%)' },
                 barmode: 'group', // Grouped bar chart
                 //height: 400,
                 hovermode: 'x',
