@@ -79,6 +79,7 @@ app.layout = dbc.Container([
                 options=groups,
                 value=default_group,
                 clearable=False,
+                searchable=False
             ),
             #width=3
         ),
