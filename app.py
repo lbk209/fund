@@ -80,7 +80,7 @@ app.layout = dbc.Container([
                 value=default_group,
                 clearable=False,
             ),
-            width=3
+            #width=3
         ),
         dbc.Col(
             daq.BooleanSwitch(
@@ -112,7 +112,8 @@ app.layout = dbc.Container([
         target='cost-boolean-switch',
         placement='bottom'
     )
-], fluid=True)  # Full-width container
+#], fluid=True)  # Full-width container
+])
 
 
 # Preprocess data to make it JSON-serializable and store it in a JavaScript variable
