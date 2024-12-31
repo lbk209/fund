@@ -232,34 +232,44 @@ app.clientside_callback(
         let title = `${titleBase} (${titleComp}`;
         title = titleCost ? `${title}, ${titleCost})` : `${title})`;
 
+        const layout = {
+            title: { text: title, x: 0 },
+            hovermode: 'x',
+            yaxis: { title: '가격' },
+            xaxis: {
+                rangeselector: {
+                    buttons: [
+                        {
+                            count: 3,
+                            label: "3y",
+                            step: "year",
+                            stepmode: "backward"
+                        },
+                        {
+                            step: "all",
+                            label: "All"
+                        }
+                    ]
+                },
+                rangeslider: {
+                    visible: true
+                },
+                type: "date"
+            },
+            responsive: true
+        };
+
+        // Detect the window width (client-side)
+        const viewportWidth = window.innerWidth;
+
+        // Disable legend for mobile devices
+        if (viewportWidth < 768) {
+            layout.legend = {visible: false};
+        }
+
         return {
             data: traces,
-            layout: {
-                title: { text: title, x: 0 },
-                hovermode: 'x',
-                yaxis: { title: '가격' },
-                xaxis: {
-                    rangeselector: {
-                        buttons: [
-                            {
-                                count: 3,
-                                label: "3y",
-                                step: "year",
-                                stepmode: "backward"
-                            },
-                            {
-                                step: "all",
-                                label: "All"
-                            }
-                        ]
-                    },
-                    rangeslider: {
-                        visible: true
-                    },
-                    type: "date"
-                },
-                responsive: true
-            }
+            layout: layout
         };
     }
     """,
@@ -325,18 +335,28 @@ app.clientside_callback(
             title = '펀드 연평균 수익률 (펀드별 설정일 이후)';
         }
 
+        const layout = {
+            title: { text: title, x: 0 }, // Align title to the left
+            //xaxis: { title: 'Tickers' },
+            yaxis: { title: '연평균 수익률 (%)' },
+            barmode: 'group', // Grouped bar chart
+            //height: 400,
+            hovermode: 'x',
+            //hovertemplate='%{y:.0f}%',
+            responsive: true
+        };
+
+        // Detect the window width (client-side)
+        const viewportWidth = window.innerWidth;
+
+        // Disable legend for mobile devices
+        if (viewportWidth < 768) {
+            layout.legend = {visible: false};
+        }
+
         return {
             data: traces,
-            layout: {
-                title: { text: title, x: 0 }, // Align title to the left
-                //xaxis: { title: 'Tickers' },
-                yaxis: { title: '연평균 수익률 (%)' },
-                barmode: 'group', // Grouped bar chart
-                //height: 400,
-                hovermode: 'x',
-                //hovertemplate='%{y:.0f}%',
-                responsive: true
-            }
+            layout: layout
         };
     }
     """,
