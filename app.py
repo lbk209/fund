@@ -57,7 +57,7 @@ tab_info = html.Div([
         #html.Div('문의'),
         html.I(className="fa-solid fa-envelope", style={"margin-right": "10px"}),
         html.A(email_info, href=f"mailto:{email_info}?Subject=달달펀드:문의")
-    ])
+    ], style={'textAlign': 'right'})
 ], style={'fontSize': 14})
 
 tab_topic = '테스트'
