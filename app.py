@@ -42,7 +42,7 @@ df_table = (df_prc.groupby('group').apply(lambda x: x.index.get_level_values(1).
               .join(calc_cagr(1).rename('1y')).join(calc_cagr(3).rename('3y')))
 df_table.index = [f'TDF{x}' for x in df_table.index]
 df_table = df_table.reset_index()
-df_table.columns = ['구분', '개수', '1년 수익률(%)', '3년 수익률(%)']
+df_table.columns = ['구분', '펀드 개수', '1년 수익률 ± 표준편차 (%)', '3년 수익률 ± 표준편차 (%)']
 
 # Initialize the Dash app
 external_stylesheets = [dbc.themes.CERULEAN, 
@@ -69,7 +69,7 @@ topics = [extract_topics(x, style_heading=style_heading) for x in contents['topi
 # additional topic: table
 table = dbc.Table.from_dataframe(df_table, size='sm', striped=True, bordered=True,
                                  style={'width':'100%', 'text-align':'center', 'fontSize': 14})
-cgi = {'펀드 보유 기간에 따른 과거 수익률':table}
+cgi = {'TDF 보유 기간에 따른 과거 수익률':table}
 table1 = extract_topics(cgi, item=html.Div, 
                         style_content={'margin-top': '20px', 'line-height': '150%'})
 
