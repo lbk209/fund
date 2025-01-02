@@ -68,7 +68,7 @@ topics = [extract_topics(x, style_heading=style_heading) for x in contents['topi
 
 # additional topic: table
 table = dbc.Table.from_dataframe(df_table, size='sm', striped=True, bordered=True,
-                                 style={'width':'50%', 'text-align':'center', 'fontSize': 14})
+                                 style={'width':'100%', 'text-align':'center', 'fontSize': 14})
 cgi = {'펀드 보유 기간에 따른 과거 수익률':table}
 table1 = extract_topics(cgi, item=html.Div, 
                         style_content={'margin-top': '20px', 'line-height': '150%'})
