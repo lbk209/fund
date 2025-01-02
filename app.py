@@ -3,7 +3,7 @@ import pandas as pd
 import dash_bootstrap_components as dbc
 import dash_daq as daq
 import json
-from contents import contents, break_line
+from contents import contents, break_line, extract_topics
 
 file_prc = 'fund_monthly_241229.csv'
 file_name = 'fund_name_241230.csv'
@@ -40,7 +40,7 @@ external_stylesheets = [dbc.themes.CERULEAN,
 app = Dash(__name__, title="달달펀드",
            external_stylesheets=external_stylesheets)
 
-style_h6 = {'color':'slategray', 'font-weight':'bold'}
+style_heading={'color':'slategray', 'font-weight':'bold'}
 
 # footer
 footer = html.Footer(
@@ -49,18 +49,29 @@ footer = html.Footer(
     '2025 달달펀드'
 ]), style={'textAlign': 'right', 'margin-top': '20px'})
 
-# contents
-topics = [[html.H6(k, style=style_h6), *break_line(v, html.Li)] 
-          for k,v in contents['topics'].items()]
+# topics
+topics = [extract_topics(x, style_heading=style_heading) for x in contents['topics']]
+
+# additional topic: table
+df = df_prc.groupby('group').apply(lambda x: x.index.get_level_values(1).nunique())
+df.index = [f'TDF{x}' for x in df.index]
+df = df.reset_index()
+df.columns = ['구분', '개수']
+table = dbc.Table.from_dataframe(df, size='sm', striped=True, bordered=True,
+                                 style={'width':'25%', 'text-align':'center', 'fontSize': 14})
+cgi = {'분석에 사용한 목표시점별 펀드 개수':table}
+table1 = extract_topics(cgi, item=html.Div, 
+                        style_content={'margin-top': '20px', 'line-height': '150%'})
+
 tab_topic = html.Div(
-    [html.Div(x, style={'margin-top': '20px', 'line-height': '200%'}) for x in topics],
+    [topics[0], table1],
 )
 
 # info
 info = contents['info']
 tab_info = html.Div([
     html.P(),
-    html.P('다달이 전하는 펀드 투자 정보', style=style_h6),
+    html.P('다달이 전하는 펀드 투자 정보', style=style_heading),
     html.Div(break_line(info['about'], html.P), style={'line-height': '100%'}),
     html.Div([
         dbc.Alert([
