@@ -40,16 +40,28 @@ external_stylesheets = [dbc.themes.CERULEAN,
 app = Dash(__name__, title="달달펀드",
            external_stylesheets=external_stylesheets)
 
-topics = [[html.H6(k), *break_line(v, html.Li)] for k,v in contents['topics'].items()]
+style_h6 = {'color':'slategray', 'font-weight':'bold'}
+
+# footer
+footer = html.Footer(
+    html.Small([
+    html.I(className="fa-regular fa-copyright"),
+    '2025 달달펀드'
+]), style={'textAlign': 'right', 'margin-top': '20px'})
+
+# contents
+topics = [[html.H6(k, style=style_h6), *break_line(v, html.Li)] 
+          for k,v in contents['topics'].items()]
 tab_topic = html.Div(
     [html.Div(x, style={'margin-top': '20px', 'line-height': '200%'}) for x in topics],
 )
 
+# info
 info = contents['info']
 tab_info = html.Div([
     html.P(),
-    html.H5('다달이 전하는 펀드 투자 정보', style={'line-height': '200%'}),
-    html.Div(break_line(info['about'], html.P), style={'line-height': '150%'}),
+    html.P('다달이 전하는 펀드 투자 정보', style=style_h6),
+    html.Div(break_line(info['about'], html.P), style={'line-height': '100%'}),
     html.Div([
         dbc.Alert([
             html.I(className="bi bi-info-circle-fill me-2"),
@@ -59,13 +71,14 @@ tab_info = html.Div([
             className="d-flex align-items-center",
         ),
         html.P([
-            html.I(className="fa-solid fa-envelope", style={"margin-right": "10px"}),
+            html.I(className="fa-regular fa-envelope", title='문의', style={"margin-right": "10px"}),
             html.A(info['email'], href=f"mailto:{info['email']}?Subject=달달펀드:문의")
         ], style={'textAlign': 'right'})
     ], style={'fontSize': 14})
     #])
 ])
 
+# tabs
 tabs_contents = [
     dbc.Tab(dcc.Graph(id='price-plot'), label='가격'),
     dbc.Tab(dcc.Graph(id='return-plot'), label='수익률'),
@@ -74,6 +87,7 @@ tabs_contents = [
 ]
 tabs = dbc.Tabs(tabs_contents)
 
+# layout
 app.layout = dbc.Container([
     html.Br(),
     dbc.Row([
@@ -105,6 +119,7 @@ app.layout = dbc.Container([
         className="mb-3"
     ),
     dbc.Row(tabs),
+    dbc.Row(footer),
     html.Br(),
     dcc.Store(id='price-data'),
     dbc.Tooltip(
