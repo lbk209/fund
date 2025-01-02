@@ -30,6 +30,20 @@ fund_name = fund_name.iloc[:,0].to_dict()
 groups = df_prc.index.get_level_values('group').unique()
 groups = [{'label': f'TDF{x}', 'value': x} for x in groups]
 
+# stats for table
+calc_cagr = lambda year: (df_prc['price_after_fees']
+                          .groupby('ticker', group_keys=False).apply(lambda x: x.pct_change(year*12).dropna())
+                          .groupby('group').agg(['mean', 'std'])
+                          .mul(100).round(1)
+                          .apply(lambda x: f"{x['mean']:.1f} ± {x['std']:.1f}", axis=1)
+                          #.apply(lambda x: f"{x['mean']:.1%} ± {x['std']:.1%}", axis=1)
+                         )
+df_table = (df_prc.groupby('group').apply(lambda x: x.index.get_level_values(1).nunique()).to_frame('n')
+              .join(calc_cagr(1).rename('1y')).join(calc_cagr(3).rename('3y')))
+df_table.index = [f'TDF{x}' for x in df_table.index]
+df_table = df_table.reset_index()
+df_table.columns = ['구분', '개수', '1년 수익률(%)', '3년 수익률(%)']
+
 # Initialize the Dash app
 external_stylesheets = [dbc.themes.CERULEAN, 
                         #dbc.themes.BOOTSTRAP,
@@ -53,18 +67,14 @@ footer = html.Footer(
 topics = [extract_topics(x, style_heading=style_heading) for x in contents['topics']]
 
 # additional topic: table
-df = df_prc.groupby('group').apply(lambda x: x.index.get_level_values(1).nunique())
-df.index = [f'TDF{x}' for x in df.index]
-df = df.reset_index()
-df.columns = ['구분', '개수']
-table = dbc.Table.from_dataframe(df, size='sm', striped=True, bordered=True,
-                                 style={'width':'25%', 'text-align':'center', 'fontSize': 14})
-cgi = {'분석에 사용한 목표시점별 펀드 개수':table}
+table = dbc.Table.from_dataframe(df_table, size='sm', striped=True, bordered=True,
+                                 style={'width':'50%', 'text-align':'center', 'fontSize': 14})
+cgi = {'펀드 보유 기간에 따른 과거 수익률':table}
 table1 = extract_topics(cgi, item=html.Div, 
                         style_content={'margin-top': '20px', 'line-height': '150%'})
 
 tab_topic = html.Div(
-    [topics[0], table1],
+    [topics[0], topics[1], table1],
 )
 
 # info
