@@ -66,15 +66,21 @@ footer = html.Footer(
 # topics
 topics = [extract_topics(x, style_heading=style_heading) for x in contents['topics']]
 
-# additional topic: table
+# additional contents
 table = dbc.Table.from_dataframe(df_table, size='sm', striped=True, bordered=True,
                                  style={'width':'100%', 'text-align':'center', 'fontSize': 14})
-cgi = {'TDF 보유 기간에 따른 과거 수익률':table}
+cgi = {'표1: TDF 보유 기간에 따른 과거 수익률':table}
 table1 = extract_topics(cgi, item=html.Div, 
                         style_content={'margin-top': '20px', 'line-height': '150%'})
 
+#image = html.Img(src=app.get_asset_url('/contents/tdf_selected.png'))
+image = html.Img(src='assets/contents/tdf_selected.png')
+cgi = {'그림1: 3년 후 손해 확률 3% 미만 TDF (베이지안 추정 적용)':image}
+image1 = extract_topics(cgi, item=html.Div, 
+                        style_content={'margin-top': '20px', 'line-height': '150%'})
+
 tab_topic = html.Div(
-    [topics[0], topics[1], table1],
+    [topics[0], topics[1], table1, image1],
 )
 
 # info
