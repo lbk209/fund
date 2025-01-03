@@ -75,7 +75,7 @@ table1 = extract_topics(cgi, item=html.Div,
 
 #image = html.Img(src='/assets/contents/tdf_selected.png')
 #image = html.Img(src='/assets/tdf_selected.png')
-image = html.Img(src='/assets/favicon.ico')
+image = html.Img(src='/assets/contents/favicon.ico')
 cgi = {'그림1: 3년 후 손해 확률 3% 미만 TDF (베이지안 추정 적용)':image}
 image1 = extract_topics(cgi, item=html.Div, 
                         style_content={'margin-top': '20px', 'line-height': '150%'})
