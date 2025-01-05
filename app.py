@@ -228,8 +228,6 @@ app.index_string = f"""
     </body>
 </html>
 """
-# testing
-app.index_string = None
 
 # Client-side callback for price data
 app.clientside_callback(
