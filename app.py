@@ -74,7 +74,10 @@ table1 = extract_topics(cgi, item=html.Div,
                         style_content={'margin-top': '20px', 'line-height': '150%'})
 
 #image = html.Img(src=app.get_asset_url('tdf_selected.png'))
-image = html.Img(src="/assets/tdf_selected.png")
+src = "/assets/tdf_selected.png"
+image = html.Img(src=src, alt='TDF 수익률 추정', 
+                 style={'width':'100%', 'min-width':'50%', 'height':'auto'})
+image = html.A(image, href=src)
 cgi = {'그림1: 3년 후 손해 확률 3% 미만 TDF (베이지안 추정 적용)':image}
 image1 = extract_topics(cgi, item=html.Div, 
                         style_content={'margin-top': '20px', 'line-height': '150%'})
