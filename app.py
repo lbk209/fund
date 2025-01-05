@@ -89,57 +89,6 @@ tab_topic = html.Div(
 
 # notice
 #tab_notice = html.Div(className="giscus")
-tab_notice = html.Div(
-    style={
-        "display": "flex",
-        "justifyContent": "center",
-        "alignItems": "center",
-        "minHeight": "100vh",
-        "backgroundColor": "#f9f9f9",
-        "fontFamily": "Arial, sans-serif",
-    },
-    children=[
-        html.Div(
-            style={
-                "width": "80%",
-                "maxWidth": "800px",
-                "margin": "0 auto",
-                "padding": "20px",
-                "background": "#fff",
-                "border": "1px solid #ddd",
-                "borderRadius": "8px",
-                "boxShadow": "0 4px 6px rgba(0, 0, 0, 0.1)",
-            },
-            children=[
-                html.H1("댓글 섹션", style={"textAlign": "center"}),
-                html.P("아래에서 댓글을 확인하거나 추가하세요:", style={"textAlign": "center"}),
-                html.Iframe(
-                    src="https://giscus.app/client.js",
-                    style={
-                        "border": "none",
-                        "width": "100%",
-                        "height": "500px",
-                        "borderRadius": "4px",
-                    },
-                    **{
-                        "data-repo": "lbk209/fund",
-                        "data-repo-id": "R_kgDONicCMA",
-                        "data-category": "Announcements",
-                        "data-category-id": "DIC_kwDONicCMM4Cluz9",
-                        "data-mapping": "pathname",
-                        "data-strict": "0",
-                        "data-reactions-enabled": "1",
-                        "data-emit-metadata": "0",
-                        "data-input-position": "bottom",
-                        "data-theme": "light",
-                        "data-lang": "ko",
-                        "crossorigin": "anonymous",
-                    },
-                ),
-            ],
-        )
-    ],
-)
 
 # info
 info = contents['info']
@@ -168,7 +117,7 @@ tabs_contents = [
     dbc.Tab(dcc.Graph(id='price-plot'), label='가격'),
     dbc.Tab(dcc.Graph(id='return-plot'), label='수익률'),
     dbc.Tab(tab_topic, label='토픽'),
-    dbc.Tab(tab_notice, label='알림'),
+    #dbc.Tab(tab_notice, label='알림'),
     dbc.Tab(tab_info, label='정보')
 ]
 tabs = dbc.Tabs(tabs_contents)
