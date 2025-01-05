@@ -9,6 +9,8 @@ on:
       - '**.csv'
       - 'requirements.txt'
       - 'assets'
+      - 'Makefile'
+      
 jobs:
 
   run_app:
