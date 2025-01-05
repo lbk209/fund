@@ -88,7 +88,12 @@ tab_topic = html.Div(
 )
 
 # notice
-#tab_notice = html.Div(className="giscus")
+tab_notice = html.Div(
+    children=[
+        dcc.Store(id="load-giscus"),  # Store to trigger the clientside callback
+        html.Div(className="giscus"),  # Placeholder for Giscus
+    ]
+)
 
 # info
 info = contents['info']
@@ -117,7 +122,7 @@ tabs_contents = [
     dbc.Tab(dcc.Graph(id='price-plot'), label='가격'),
     dbc.Tab(dcc.Graph(id='return-plot'), label='수익률'),
     dbc.Tab(tab_topic, label='토픽'),
-    #dbc.Tab(tab_notice, label='알림'),
+    dbc.Tab(tab_notice, label='알림'),
     dbc.Tab(tab_info, label='정보')
 ]
 tabs = dbc.Tabs(tabs_contents)
@@ -419,6 +424,39 @@ app.clientside_callback(
     Input('compare-boolean-switch', 'on')
 )
 
+
+# Define clientside callback to load the Giscus script
+app.clientside_callback(
+    """
+    function(n_clicks) {
+        if (!n_clicks) return;  // Do nothing on initial load
+
+        // Create the Giscus script element
+        var script = document.createElement('script');
+        script.src = "https://giscus.app/client.js";
+        script.setAttribute("data-repo", "lbk209/fund");
+        script.setAttribute("data-repo-id", "R_kgDONicCMA");
+        script.setAttribute("data-category", "Announcements");
+        script.setAttribute("data-category-id", "DIC_kwDONicCMM4Cluz9");
+        script.setAttribute("data-mapping", "pathname");
+        script.setAttribute("data-strict", "0");
+        script.setAttribute("data-reactions-enabled", "1");
+        script.setAttribute("data-emit-metadata", "0");
+        script.setAttribute("data-input-position", "bottom");
+        script.setAttribute("data-theme", "light");
+        script.setAttribute("data-lang", "ko");
+        script.setAttribute("crossorigin", "anonymous");
+        script.async = true;
+
+        // Append the script to the body
+        document.body.appendChild(script);
+
+        return null;
+    }
+    """,
+    Output("load-giscus", "data"),  # Dummy output to trigger script loading
+    Input("load-giscus", "data"),
+)
 
 if __name__ == '__main__':
     app.run_server(debug=False)
