@@ -20,8 +20,8 @@ run_app:
 	mv 127.0.0.1:8050 pages_files
 
 	# Copy assets folder into the deployment folder
-	mkdir -p pages_files/fund/assets
-	cp -R assets/* pages_files/fund/assets/
+	mkdir -p pages_files/assets
+	cp -R assets/* pages_files/assets/
 
 	find pages_files -exec sed -i.bak 's|_dash-component-suites|fund\\/_dash-component-suites|g' {} \;
 	find pages_files -exec sed -i.bak 's|_dash-layout|fund/_dash-layout.json|g' {} \;
