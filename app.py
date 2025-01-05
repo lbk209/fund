@@ -76,8 +76,9 @@ table1 = extract_topics(cgi, item=html.Div,
 #image = html.Img(src=app.get_asset_url('tdf_selected.png'))
 src = "/assets/tdf_selected.png"
 image = html.Img(src=src, alt='TDF 수익률 추정', 
-                 style={'width':'100%', 'min-width':'50%', 'height':'auto'})
-image = html.A(image, href=src)
+                 style={'width':'100%', #'min-width':'50%', 
+                        'height':'auto'})
+#image = html.A(image, href=src)
 cgi = {'그림1: 3년 후 손해 확률 3% 미만 TDF (베이지안 추정 적용)':image}
 image1 = extract_topics(cgi, item=html.Div, 
                         style_content={'margin-top': '20px', 'line-height': '150%'})
@@ -85,6 +86,9 @@ image1 = extract_topics(cgi, item=html.Div,
 tab_topic = html.Div(
     [topics[0], topics[1], table1, image1],
 )
+
+# notice
+tab_notice = html.Div(className="giscus")
 
 # info
 info = contents['info']
@@ -113,6 +117,7 @@ tabs_contents = [
     dbc.Tab(dcc.Graph(id='price-plot'), label='가격'),
     dbc.Tab(dcc.Graph(id='return-plot'), label='수익률'),
     dbc.Tab(tab_topic, label='토픽'),
+    dbc.Tab(tab_notice, label='알림'),
     dbc.Tab(tab_info, label='정보')
 ]
 tabs = dbc.Tabs(tabs_contents)
@@ -222,6 +227,21 @@ app.index_string = f"""
     <body>
         <script>
             var preprocessedData = {preprocessed_data_json};
+        </script>
+        <script src="https://giscus.app/client.js"
+            data-repo="lbk209/fund"
+            data-repo-id="R_kgDONicCMA"
+            data-category="Announcements"
+            data-category-id="DIC_kwDONicCMM4Cluz9"
+            data-mapping="pathname"
+            data-strict="0"
+            data-reactions-enabled="1"
+            data-emit-metadata="0"
+            data-input-position="bottom"
+            data-theme="light"
+            data-lang="ko"
+            crossorigin="anonymous"
+            async>
         </script>
         {{%app_entry%}}
         {{%config%}}
