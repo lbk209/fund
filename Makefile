@@ -16,7 +16,12 @@ run_app:
 
 	wget -r http://127.0.0.1:8050/_dash-component-suites/plotly/package_data/plotly.min.js
 
+	# Move scraped files
 	mv 127.0.0.1:8050 pages_files
+
+	# Copy assets folder into the deployment folder
+	mkdir -p pages_files/fund/assets
+	cp -R assets/* pages_files/fund/assets/
 
 	find pages_files -exec sed -i.bak 's|_dash-component-suites|fund\\/_dash-component-suites|g' {} \;
 	find pages_files -exec sed -i.bak 's|_dash-layout|fund/_dash-layout.json|g' {} \;
