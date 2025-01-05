@@ -88,7 +88,7 @@ tab_topic = html.Div(
 )
 
 # notice
-tab_notice = html.Div(className="giscus")
+#tab_notice = html.Div(className="giscus")
 
 # info
 info = contents['info']
@@ -117,7 +117,7 @@ tabs_contents = [
     dbc.Tab(dcc.Graph(id='price-plot'), label='가격'),
     dbc.Tab(dcc.Graph(id='return-plot'), label='수익률'),
     dbc.Tab(tab_topic, label='토픽'),
-    dbc.Tab(tab_notice, label='알림'),
+    #dbc.Tab(tab_notice, label='알림'),
     dbc.Tab(tab_info, label='정보')
 ]
 tabs = dbc.Tabs(tabs_contents)
