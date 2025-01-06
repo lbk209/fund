@@ -93,6 +93,7 @@ tab_notice = html.Div(
         dcc.Store(id="load-giscus", data=1),  # Trigger the clientside callback on initial load
         html.Div(className="giscus"),  # Placeholder for Giscus
     ]
+    , style={'margin-top': '20px'}
 )
 
 # info
