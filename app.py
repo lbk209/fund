@@ -90,7 +90,7 @@ tab_topic = html.Div(
 # notice
 tab_notice = html.Div(
     children=[
-        dcc.Store(id="load-giscus"),  # Store to trigger the clientside callback
+        dcc.Store(id="load-giscus", data=1),  # Trigger the clientside callback on initial load
         html.Div(className="giscus"),  # Placeholder for Giscus
     ]
 )
@@ -425,7 +425,7 @@ app.clientside_callback(
 )
 
 
-# Define clientside callback to load the Giscus script
+# Define clientside callback to load and initialize Giscus
 app.clientside_callback(
     """
     function(data) {
@@ -470,7 +470,6 @@ app.clientside_callback(
     Output("load-giscus", "data"),
     Input("load-giscus", "data"),
 )
-
 
 if __name__ == '__main__':
     app.run_server(debug=False)
