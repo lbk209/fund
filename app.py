@@ -428,35 +428,49 @@ app.clientside_callback(
 # Define clientside callback to load the Giscus script
 app.clientside_callback(
     """
-    function(n_clicks) {
-        if (!n_clicks) return;  // Do nothing on initial load
+    function(data) {
+        if (!data) return;  // Do nothing if data hasn't been triggered
 
-        // Create the Giscus script element
-        var script = document.createElement('script');
-        script.src = "https://giscus.app/client.js";
-        script.setAttribute("data-repo", "lbk209/fund");
-        script.setAttribute("data-repo-id", "R_kgDONicCMA");
-        script.setAttribute("data-category", "Announcements");
-        script.setAttribute("data-category-id", "DIC_kwDONicCMM4Cluz9");
-        script.setAttribute("data-mapping", "pathname");
-        script.setAttribute("data-strict", "0");
-        script.setAttribute("data-reactions-enabled", "1");
-        script.setAttribute("data-emit-metadata", "0");
-        script.setAttribute("data-input-position", "bottom");
-        script.setAttribute("data-theme", "light");
-        script.setAttribute("data-lang", "ko");
-        script.setAttribute("crossorigin", "anonymous");
-        script.async = true;
+        // Check if Giscus script is already loaded
+        if (!document.querySelector('script[src="https://giscus.app/client.js"]')) {
+            // Create the Giscus script element
+            var script = document.createElement('script');
+            script.src = "https://giscus.app/client.js";
+            script.setAttribute("data-repo", "lbk209/fund");
+            script.setAttribute("data-repo-id", "R_kgDONicCMA");
+            script.setAttribute("data-category", "Announcements");
+            script.setAttribute("data-category-id", "DIC_kwDONicCMM4Cluz9");
+            script.setAttribute("data-mapping", "pathname");
+            script.setAttribute("data-strict", "0");
+            script.setAttribute("data-reactions-enabled", "1");
+            script.setAttribute("data-emit-metadata", "0");
+            script.setAttribute("data-input-position", "bottom");
+            script.setAttribute("data-theme", "light");
+            script.setAttribute("data-lang", "ko");
+            script.setAttribute("crossorigin", "anonymous");
+            script.async = true;
 
-        // Append the script to the body
-        document.body.appendChild(script);
+            // Append the script to the body
+            document.body.appendChild(script);
+
+            // Re-initialize Giscus when the script is loaded
+            script.onload = function() {
+                var event = new Event("giscus:reset");
+                document.querySelector(".giscus").dispatchEvent(event);
+            };
+        } else {
+            // If script is already loaded, just reset Giscus
+            var event = new Event("giscus:reset");
+            document.querySelector(".giscus").dispatchEvent(event);
+        }
 
         return null;
     }
     """,
-    Output("load-giscus", "data"),  # Dummy output to trigger script loading
+    Output("load-giscus", "data"),
     Input("load-giscus", "data"),
 )
+
 
 if __name__ == '__main__':
     app.run_server(debug=False)
