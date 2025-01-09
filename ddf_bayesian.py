@@ -248,7 +248,7 @@ class BayesianEstimator():
         return {
             #'mean': self._calc_mean_return(*args).to_dict(),
             #'std': self._calc_volatility(*args).to_dict(),
-            'ror': self._calc_mean_return(*args).to_dict(),
+            'total_return': self._calc_mean_return(*args).to_dict(),
             'sharpe': self._calc_sharpe(*args).to_dict(),
             'cagr': self._calc_mean_return(df_prices, self.days_in_year).to_dict()
         }
