@@ -122,6 +122,10 @@ class BayesianEstimator():
         # df of tickers (tickers in columns) which of each might have its own periods.
         # the periods of all tickers will be aligned in every calculation.
         df_prices = df_prices.to_frame() if isinstance(df_prices, pd.Series) else df_prices
+        if df_prices.index.name is None:
+            df_prices.index.name = 'date' # set index name to run check_days_in_year
+        _ = check_days_in_year(df_prices, days_in_year, freq='M', n_thr=1)
+        
         self.df_prices = df_prices
         self.days_in_year = days_in_year
         self.metrics = metrics
@@ -254,24 +258,24 @@ class BayesianEstimator():
         coords={'ticker': tickers}
         with pm.Model(coords=coords) as model:
             # nu: degree of freedom (normality parameter)
-            nu = pm.Exponential('nu_minus_two', 1 / rate_nu, initval=4) + 2.
+            nu = pm.Exponential('nu_minus_two', 1 / rate_nu, testval=4) + 2.
             mean = pm.Normal('mu', mu=mean_prior, sigma=std_prior, dims='ticker')
             std = pm.Uniform('sig', lower=std_low, upper=std_high, dims='ticker')
             
             if align_period:
-                _ = pm.StudentT('ror', nu=nu, mu=mean, sigma=std, observed=df_ret)
+                ror = pm.StudentT('ror', nu=nu, mu=mean, sigma=std, observed=df_ret)
             else:
                 func = lambda x: dict(mu=mean[x], sigma=std[x], observed=ret_list[x])
-                _ = {i: pm.StudentT(f'ror[{x}]', nu=nu, **func(i)) for i, x in enumerate(tickers)}
+                ror = {i: pm.StudentT(f'ror[{x}]', nu=nu, **func(i)) for i, x in enumerate(tickers)}
     
             #pm.Deterministic('mean', mean, dims='ticker')
             #pm.Deterministic('std', std, dims='ticker')
             std_sr = std * pt.sqrt(nu / (nu - 2)) if normality_sharpe else std
-            tret = pm.Normal('total_return', mu=mean, sigma=std_sr, dims='ticker')
+            ror = pm.Normal('ror', mu=mean, sigma=std_sr, dims='ticker')
             sharpe = pm.Deterministic('sharpe', (mean-rf) / std_sr, dims='ticker')
 
             years = periods/days_in_year
-            cagr = pm.Deterministic('cagr', (tret+1) ** (1/years) - 1, dims='ticker')
+            cagr = pm.Deterministic('cagr', (ror+1) ** (1/years) - 1, dims='ticker')
             yearly_sharpe = pm.Deterministic('yearly_sharpe', sharpe * np.sqrt(1/years), dims='ticker')
     
             trace = pm.sample(draws=sample_draws, tune=sample_tune,
@@ -317,7 +321,7 @@ class BayesianEstimator():
         print(f'{f} loaded')
         return bayesian_data
         
-
+    
     def bayesian_summary(self, var_names=None, filter_vars='like', **kwargs):
         if self.bayesian_data is None:
             return print('ERROR: run bayesian_sample first')
@@ -326,15 +330,10 @@ class BayesianEstimator():
             df = az.summary(trace, var_names=var_names, filter_vars=filter_vars, **kwargs)
             # split index to metric & ticker to make them new index
             index = ['metric', 'ticker']
-            def func(x):
-                match = re.match(r"(.*)\[(.*)\]", x)
-                if match:
-                    return match.groups()
-                else: # some var_name happen to have no ticker
-                    return (x, None)
+            func = lambda x: re.match(r"(.*)\[(.*)\]", x).groups()
             df[index] = df.apply(lambda x: func(x.name), axis=1, result_type='expand')
-            return df.loc[df['ticker'].notna()].set_index(index)
-    
+            return df.set_index(index)
+
 
     def plot_posterior(self, var_names=None, tickers=None, ref_val=None, 
                        length=20, ratio=1, textsize=9, **kwargs):
@@ -386,10 +385,11 @@ class BayesianEstimator():
         return None
 
 
-    def plot_returns(self, tickers=None, num_samples=None, var_names=['total_return', 'sharpe'],
-                     figsize=(10,3), xlim=(-0.4, 0.6), length=20, ratio=1, max_legend=99):
+    def plot_returns(self, tickers=None, num_samples=None, var_names=['cagr', 'yearly_sharpe'],
+                     figsize=(10,3), xlims=None, length=20, ratio=1, max_legend=99):
         """
-        var_names: ['total_return', 'sharpe'] or ['cagr', 'yearly_sharpe']
+        var_names: ['ror', 'sharpe'] or ['cagr', 'yearly_sharpe']
+        xlims: list of xlim for ax1 & ax2. ex) [(-1,1),None]
         """
         security_names = self.security_names
         axes = create_split_axes(figsize=figsize, vertical_split=False, 
@@ -400,9 +400,9 @@ class BayesianEstimator():
         if axes is None:
             return None # see _plot_compare for err msg
             
+        _ = [ax.set_xlim(x) for ax, x in zip(axes, xlims)] if isinstance(xlims, list) else None
         ax1, ax2 = axes
         _ = ax1.set_title(var_names[0].upper())
-        _ = ax1.set_xlim(xlim)
         _ = ax1.axvline(0, c='grey', lw=1, ls='--')
         _ = ax1.get_legend().remove()
         _ = ax2.set_title(var_names[1].upper())
