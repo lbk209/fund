@@ -8,6 +8,8 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from os.path import splitext
 from matplotlib.gridspec import GridSpec
+from ffn import calc_perf_stats
+
 
 # support korean lang
 mpl.rcParams['axes.unicode_minus'] = False
@@ -115,6 +117,36 @@ def string_shortener(x, n=20, r=1, ellipsis="..."):
     result = re.sub(r"([^a-zA-Z0-9\s])" + re.escape(ellipsis), f"{ellipsis}", result)  # Before the ellipsis
     result = re.sub(re.escape(ellipsis) + r"([^a-zA-Z0-9\s])", f"{ellipsis}", result)  # After the ellipsis
     return result
+
+
+def performance_stats(df_prices, metrics=METRICS, sort_by=None, align_period=True, idx_dt=['start', 'end']):
+    if isinstance(df_prices, pd.Series):
+        df_prices = df_prices.to_frame()
+
+    if len(df_prices) <= 1:
+        return print('ERROR: Need more data to measure')
+        
+    if align_period:
+        df_stats = calc_stats(df_prices).stats
+    else:
+        #df_stats = df_prices.apply(lambda x: calc_stats(x.dropna()).stats)
+        df_stats = df_prices.apply(lambda x: calc_perf_stats(x.dropna()).stats)
+
+    if (metrics is not None) and (metrics != 'all'):
+        metrics = idx_dt + metrics
+        df_stats = df_stats.loc[metrics]
+
+    for i in df_stats.index:
+        if i in idx_dt:
+            df_stats.loc[i] = df_stats.loc[i].apply(lambda x: x.strftime('%Y-%m-%d'))
+
+    if sort_by is not None:
+        try:
+            df_stats = df_stats.sort_values(sort_by, axis=1, ascending=False)
+        except KeyError as e:
+            print(f'WARNING: no sorting as {e}')
+
+    return df_stats
 
 
 class BayesianEstimator():
@@ -387,9 +419,10 @@ class BayesianEstimator():
 
 
     def plot_returns(self, tickers=None, num_samples=None, var_names=['total_return', 'sharpe'],
-                     figsize=(10,3), xlim=(-0.4, 0.6), length=20, ratio=1, max_legend=99):
+                     figsize=(10,3), xlims=None, length=20, ratio=1, max_legend=99):
         """
         var_names: ['total_return', 'sharpe'] or ['cagr', 'yearly_sharpe']
+        xlims: list of xlim for ax1 & ax2. ex) [(-1,1),None]
         """
         security_names = self.security_names
         axes = create_split_axes(figsize=figsize, vertical_split=False, 
@@ -400,9 +433,9 @@ class BayesianEstimator():
         if axes is None:
             return None # see _plot_compare for err msg
             
+        _ = [ax.set_xlim(x) for ax, x in zip(axes, xlims)] if isinstance(xlims, list) else None
         ax1, ax2 = axes
         _ = ax1.set_title(var_names[0].upper())
-        _ = ax1.set_xlim(xlim)
         _ = ax1.axvline(0, c='grey', lw=1, ls='--')
         _ = ax1.get_legend().remove()
         _ = ax2.set_title(var_names[1].upper())
