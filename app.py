@@ -148,6 +148,17 @@ app.layout = dbc.Container([
                 on=False
             ),
             width="auto"),
+        dbc.Col(
+            dcc.Clipboard(
+                target_id="ticker-textarea",
+                title="펀드코드 복사",
+                style={
+                    "display": "inline-block",
+                    "fontSize": 20,
+                    "verticalAlign": "top",
+                }
+            )
+        ),
     ],
         justify="center", # horizondal
         align="center", # vertical
@@ -166,7 +177,11 @@ app.layout = dbc.Container([
         '수수료 적용',
         target='cost-boolean-switch',
         placement='bottom'
-    )
+    ),
+    dcc.Textarea(
+        id="ticker-textarea",
+        hidden='hidden'
+    ),
 #], fluid=True)  # Full-width container
 ])
 
@@ -211,6 +226,11 @@ for group in groups:
             'return': df_r_n.round(1).to_dict('records'),
             'ticker': df_r.index.tolist()
         }
+    # add fund name to ticker for ref
+    tickers = df_prc.loc[group_value].index.get_level_values('ticker').unique()
+    names = [f'{k}:{v}' for k,v in fund_name.items() if k in tickers]
+    data['name'] = '\n'.join(names)
+    # save data for group_value
     preprocessed_data[group_value] = data
 
 # Inject preprocessed data as JSON in the client
@@ -245,6 +265,17 @@ app.clientside_callback(
     """,
     Output('price-data', 'data'),
     Input('group-dropdown', 'value')
+)
+
+# update ticker & name for copy
+app.clientside_callback(
+    """
+    function(data) {
+        return data.name;
+    }
+    """,
+    Output('ticker-textarea', 'value'),
+    Input('price-data', 'data')
 )
 
 
