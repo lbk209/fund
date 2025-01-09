@@ -6,9 +6,11 @@ on:
       - 'main'
     paths:
       - 'app.py'
-      - '**.csv'
+      - 'ddf_utils.py'
+      - '*.csv'
+      - 'contents*.py'
       - 'requirements.txt'
-      - 'assets'
+      - 'assets/**'
       - 'Makefile'
       
 jobs:
