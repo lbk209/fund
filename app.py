@@ -66,9 +66,10 @@ footer = html.Footer(
 ]), style={'textAlign': 'right', 'margin-top': '20px'})
 
 # topics
-topics = [extract_topics(x, style_heading=style_heading) for x in contents['topics']]
+topics = [extract_topics(x, style_heading=style_heading) for x in topics]
+images = [extract_topics(x, style_heading=style_heading, item=html.P) for x in images]
 
-# additional contents
+# table
 table = dbc.Table.from_dataframe(df_table, size='sm', striped=True, bordered=True,
                                  style={'width':'100%', 'text-align':'center', 'fontSize': 14})
 cgi = {'표1: TDF 보유 기간에 따른 과거 수익률':table}
@@ -78,7 +79,7 @@ table1 = extract_topics(cgi, item=html.Div,
 
 
 tab_topic = html.Div(
-    [topics[0], topics[1], table1, image1],
+    [topics[0], topics[1], table1, images[0], images[1]],
 )
 
 # notice
@@ -91,7 +92,6 @@ tab_notice = html.Div(
 )
 
 # info
-info = contents['info']
 tab_info = html.Div([
     html.P(),
     html.P('다달이 전하는 펀드 투자 정보', style=style_heading),
@@ -149,8 +149,8 @@ app.layout = dbc.Container([
             ),
             width="auto"),
     ],
-        justify="center",
-        align="center",
+        justify="center", # horizondal
+        align="center", # vertical
         className="mb-3"
     ),
     dbc.Row(tabs),
