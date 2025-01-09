@@ -3,7 +3,9 @@ import pandas as pd
 import dash_bootstrap_components as dbc
 import dash_daq as daq
 import json
-from contents import contents, break_line, extract_topics
+from ddf_utils import break_line, extract_topics
+from contents_info import info
+from contents_topic_250109 import topics, images
 
 file_prc = 'fund_monthly_241229.csv'
 file_name = 'fund_name_241230.csv'
@@ -64,27 +66,20 @@ footer = html.Footer(
 ]), style={'textAlign': 'right', 'margin-top': '20px'})
 
 # topics
-topics = [extract_topics(x, style_heading=style_heading) for x in contents['topics']]
+topics = [extract_topics(x, style_heading=style_heading) for x in topics]
+images = [extract_topics(x, style_heading=style_heading, item=html.P) for x in images]
 
-# additional contents
+# table
 table = dbc.Table.from_dataframe(df_table, size='sm', striped=True, bordered=True,
                                  style={'width':'100%', 'text-align':'center', 'fontSize': 14})
 cgi = {'표1: TDF 보유 기간에 따른 과거 수익률':table}
 table1 = extract_topics(cgi, item=html.Div, 
                         style_content={'margin-top': '20px', 'line-height': '150%'})
 
-#image = html.Img(src=app.get_asset_url('tdf_selected.png'))
-src = "/assets/tdf_selected.png"
-image = html.Img(src=src, alt='TDF 수익률 추정', 
-                 style={'width':'100%', #'min-width':'50%', 
-                        'height':'auto'})
-#image = html.A(image, href=src)
-cgi = {'그림1: 3년 후 손해 확률 3% 미만 TDF (베이지안 추정 적용)':image}
-image1 = extract_topics(cgi, item=html.Div, 
-                        style_content={'margin-top': '20px', 'line-height': '150%'})
+
 
 tab_topic = html.Div(
-    [topics[0], topics[1], table1, image1],
+    [topics[0], topics[1], table1, images[0], images[1]],
 )
 
 # notice
@@ -97,7 +92,6 @@ tab_notice = html.Div(
 )
 
 # info
-info = contents['info']
 tab_info = html.Div([
     html.P(),
     html.P('다달이 전하는 펀드 투자 정보', style=style_heading),
@@ -155,8 +149,8 @@ app.layout = dbc.Container([
             ),
             width="auto"),
     ],
-        justify="center",
-        align="center",
+        justify="center", # horizondal
+        align="center", # vertical
         className="mb-3"
     ),
     dbc.Row(tabs),
