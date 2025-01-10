@@ -150,13 +150,15 @@ app.layout = dbc.Container([
             width="auto"),
         dbc.Col(
             dcc.Clipboard(
+                id='ticker-copy',
                 target_id="ticker-textarea",
-                title="펀드코드 복사",
                 style={
                     "display": "inline-block",
-                    "fontSize": 20,
-                    "verticalAlign": "top",
-                }
+                    "fontSize": 25,
+                    "color": "darkgray",  # Default icon color
+                    "cursor": "pointer",  # Pointer cursor for better UX
+                    #"verticalAlign": "bottom",
+                },
             )
         ),
     ],
@@ -168,6 +170,10 @@ app.layout = dbc.Container([
     dbc.Row(footer),
     html.Br(),
     dcc.Store(id='price-data'),
+    dcc.Textarea(
+        id="ticker-textarea",
+        hidden='hidden'
+    ),
     dbc.Tooltip(
         '상대 비교',
         target='compare-boolean-switch',
@@ -178,9 +184,10 @@ app.layout = dbc.Container([
         target='cost-boolean-switch',
         placement='bottom'
     ),
-    dcc.Textarea(
-        id="ticker-textarea",
-        hidden='hidden'
+    dbc.Tooltip(
+        '펀드코드 복사',
+        target='ticker-copy',
+        placement='bottom'
     ),
 #], fluid=True)  # Full-width container
 ])
