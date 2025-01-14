@@ -9,7 +9,7 @@ from contents_topic_250109 import topics, images
 
 file_prc = 'fund_monthly_241229.csv'
 file_name = 'fund_name_241230.csv'
-file_dst = 'fund_density_250113.json'
+file_dst = 'fund_density_ret3y_250113.json'
 path = '.'
 
 default_group = 2030
