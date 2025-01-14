@@ -358,15 +358,30 @@ app.clientside_callback(
                 },
                 type: "date"
             },
-            responsive: true
+            legend: {tracegroupgap: 1},  // Set the space between legend lines
+            responsive: true,
         };
 
         // Detect the window width (client-side)
         const viewportWidth = window.innerWidth;
 
-        // Disable legend for mobile devices
+        // Adjust legend position for mobile devices
         if (viewportWidth < 768) {
-            layout.legend = {visible: false};
+            layout.legend = {
+                orientation: 'h',  // Horizontal legend
+                x: 0,              // Align legend to the left
+                y: -0.8,           // Position legend below the plot
+                xanchor: 'left',   // Anchor legend's x position to the left
+                yanchor: 'top',    // Anchor legend's y position to the top
+            };
+            layout.yaxis = {automargin: true,};
+            layout.margin = {
+                //l: layout.margin?.l || 10,  // Left margin
+                l: 0,
+                r: 0,  // Right margin
+                //t: layout.margin?.t || 0,  // Preserve the top margin if set, or default to 0
+                //b: layout.margin?.b || 0   // Preserve the bottom margin if set, or default to 0
+            };
         }
 
         return {
@@ -553,15 +568,16 @@ app.clientside_callback(
         const hdi_lines = data.interval;
         const density = data.density;
         const x = data.x;
-
-        const title = `Density of ${var_name.toUpperCase()} (with ${hdi_prob * 100}% Interval)`;
+        
+        //const title = `Density of ${var_name.toUpperCase()} (with ${hdi_prob * 100}% Interval)`;
+        const title_xaxis = '3-year rate of return'
+        const title = `Density of 3-Year Return (with ${hdi_prob * 100}% Interval)`;
 
         let traces = [];
         let tickers = Object.keys(density[0]);
 
-        // Use Plotly's default color scale
-        //const colorPalette = ['#636EFA', '#EF553B', '#00CC96', '#AB63FA', '#FFA15C', '#19D3F3', '#FF6692', '#B6E880'];
-        const colorPalette = ['#636EFA', '#EF553B', '#00CC96', '#AB63FA', '#FFA15A', '#19D3F3', '#FF6692', '#B6E880', '#FF97FF', '#FECB52'];
+        // plotly.express.colors.qualitative.D3
+        const colorPalette = ['#1F77B4', '#FF7F0E', '#2CA02C', '#D62728', '#9467BD', '#8C564B', '#E377C2', '#7F7F7F', '#BCBD22', '#17BECF'];
         let colorIndex = 0;
 
         // Convert density data into a format suitable for Plotly
@@ -598,21 +614,47 @@ app.clientside_callback(
                 opacity: 0.3,
                 //name: name,
                 showlegend: false,    // Do not display in the legend
+                //showlegend: true,
                 legendgroup: name,    // Group HDI line with the corresponding density
                 hoverinfo: 'skip',
                 //hovertemplate: `${vals.x[0].toFixed(3)} ~ ${vals.x[1].toFixed(3)} :${name}<extra></extra>`,
             });
         }
 
+        const layout = {
+            title: title,
+            xaxis: { title: title_xaxis },
+            yaxis: { title: '', showticklabels: false },
+            hovermode: 'x unified',
+            legend: {tracegroupgap: 1},  // Set the space between legend lines
+        }
+
+        // Detect the window width (client-side)
+        const viewportWidth = window.innerWidth;
+
+        // Adjust legend position for mobile devices
+        if (viewportWidth < 768) {
+            layout.legend = {
+                orientation: 'h',  // Horizontal legend
+                x: 0,              // Align legend to the left
+                y: -1.2,           // Position legend below the plot
+                xanchor: 'left',   // Anchor legend's x position to the left
+                yanchor: 'top',    // Anchor legend's y position to the top
+            };
+            //layout.yaxis = {automargin: true,};
+            layout.margin = {
+                //l: layout.margin?.l || 10,  // Left margin
+                l: 0,
+                r: 0,  // Right margin
+                //t: layout.margin?.t || 0,  // Preserve the top margin if set, or default to 0
+                //b: layout.margin?.b || 0   // Preserve the bottom margin if set, or default to 0
+            };
+        }
+
         // Format the figure
         return {
-            'data': traces,
-            'layout': {
-                'title': title,
-                'xaxis': { 'title': var_name },
-                'yaxis': { 'title': '', 'showticklabels': false },
-                'hovermode': 'x unified',
-            }
+            data: traces,
+            layout: layout
         };
     }
     """,
