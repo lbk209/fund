@@ -9,7 +9,6 @@ from contents_topic_250109 import topics, images
 
 file_prc = 'fund_monthly_241229.csv'
 file_name = 'fund_name_241230.csv'
-file_dst = 'fund_density_ret3y_250113.json'
 path = '.'
 
 default_group = 2030
@@ -28,13 +27,8 @@ df_prc = pd.read_csv(
 
 # Load fund names
 fund_name = pd.read_csv(f'{path}/{file_name}', dtype={'ticker': str}, index_col=[0])
-fund_name = fund_name.squeeze().to_dict()
+fund_name = fund_name.iloc[:,0].to_dict()
 
-# Load density
-with open(f'{path}/{file_dst}', "r") as f:
-    data_density_json = f.read()  # Read raw JSON string directly
-
-# create dropdown options of TDF groups
 groups = df_prc.index.get_level_values('group').unique()
 groups = [{'label': f'TDF{x}', 'value': x} for x in groups]
 
@@ -122,14 +116,11 @@ tab_info = html.Div([
 tabs_contents = [
     dbc.Tab(dcc.Graph(id='price-plot'), label='가격'),
     dbc.Tab(dcc.Graph(id='return-plot'), label='수익률'),
-    dbc.Tab(dcc.Graph(id='density-plot'), label='추정', 
-                  # add tab_id & new badge for new tab
-                  tab_id='tab_new', label_class_name="tab-label new-badge-label"), 
     dbc.Tab(tab_topic, label='토픽'),
     dbc.Tab(tab_notice, label='알림'),
     dbc.Tab(tab_info, label='정보')
 ]
-tabs = dbc.Tabs(tabs_contents, id='tabs')
+tabs = dbc.Tabs(tabs_contents)
 
 # layout
 app.layout = dbc.Container([
@@ -179,7 +170,6 @@ app.layout = dbc.Container([
     dbc.Row(footer),
     html.Br(),
     dcc.Store(id='price-data'),
-    dcc.Store(id='density-data'),
     dcc.Textarea(
         id="ticker-textarea",
         hidden='hidden'
@@ -264,7 +254,6 @@ app.index_string = f"""
     <body>
         <script>
             var preprocessedData = {preprocessed_data_json};
-            var preprocessedDensity = {data_density_json};
         </script>
         {{%app_entry%}}
         {{%config%}}
@@ -358,30 +347,15 @@ app.clientside_callback(
                 },
                 type: "date"
             },
-            legend: {tracegroupgap: 1},  // Set the space between legend lines
-            responsive: true,
+            responsive: true
         };
 
         // Detect the window width (client-side)
         const viewportWidth = window.innerWidth;
 
-        // Adjust legend position for mobile devices
+        // Disable legend for mobile devices
         if (viewportWidth < 768) {
-            layout.legend = {
-                orientation: 'h',  // Horizontal legend
-                x: 0,              // Align legend to the left
-                y: -0.8,           // Position legend below the plot
-                xanchor: 'left',   // Anchor legend's x position to the left
-                yanchor: 'top',    // Anchor legend's y position to the top
-            };
-            layout.yaxis = {automargin: true,};
-            layout.margin = {
-                //l: layout.margin?.l || 10,  // Left margin
-                l: 0,
-                r: 0,  // Right margin
-                //t: layout.margin?.t || 0,  // Preserve the top margin if set, or default to 0
-                //b: layout.margin?.b || 0   // Preserve the bottom margin if set, or default to 0
-            };
+            layout.legend = {visible: false};
         }
 
         return {
@@ -528,138 +502,6 @@ app.clientside_callback(
     """,
     Output("load-giscus", "data"),
     Input("load-giscus", "data"),
-)
-
-# callbacks for density
-
-app.clientside_callback(
-    """
-    function(at, cost, compare) {
-        if (at === "tab_new") {
-            return [true, false];
-        } else {
-            return [cost, compare];
-        }
-    }
-    """,
-    [Output('cost-boolean-switch', 'on'), Output('compare-boolean-switch', 'on')],
-    [Input("tabs", "active_tab"), Input('cost-boolean-switch', 'on'), Input('compare-boolean-switch', 'on')]
-)
-
-app.clientside_callback(
-    """
-    function(group) {
-        return preprocessedDensity[group];
-    }
-    """,
-    Output('density-data', 'data'),
-    Input('group-dropdown', 'value')
-)
-
-app.clientside_callback(
-    """
-    function(data) {
-        if (!data || !data.density) {
-            return { 'data': [] };
-        }
-
-        const var_name = data.var_name;
-        const hdi_prob = data.hdi_prob;
-        const hdi_lines = data.interval;
-        const density = data.density;
-        const x = data.x;
-        
-        //const title = `Density of ${var_name.toUpperCase()} (with ${hdi_prob * 100}% Interval)`;
-        const title_xaxis = '3-year rate of return'
-        const title = `Density of 3-Year Return (with ${hdi_prob * 100}% Interval)`;
-
-        let traces = [];
-        let tickers = Object.keys(density[0]);
-
-        // plotly.express.colors.qualitative.D3
-        const colorPalette = ['#1F77B4', '#FF7F0E', '#2CA02C', '#D62728', '#9467BD', '#8C564B', '#E377C2', '#7F7F7F', '#BCBD22', '#17BECF'];
-        let colorIndex = 0;
-
-        // Convert density data into a format suitable for Plotly
-        tickers.forEach(ticker => {
-            let y = density.map(d => d[ticker]);  // Extract density values for each ticker
-            let color = colorPalette[colorIndex % colorPalette.length];
-            const vals = hdi_lines[ticker];
-            traces.push({
-                x: x,
-                y: y,
-                type: 'scatter',
-                mode: 'lines',
-                name: ticker,
-                line: { color: color },
-                legendgroup: ticker,  // Group density line with its corresponding HDI line
-                hovertemplate: `${vals.x[0].toFixed(3)} ~ ${vals.x[1].toFixed(3)} :${ticker}<extra></extra>`,
-            });
-
-            // Store color for HDI line matching
-            colorIndex++;
-        });
-
-        // Process HDI lines and add to plot
-        for (const name in hdi_lines) {
-            const vals = hdi_lines[name];
-            let color = colorPalette[tickers.indexOf(name) % colorPalette.length];
-
-            traces.push({
-                x: vals.x,
-                y: vals.y,
-                mode: 'lines+markers',
-                line: { color: color, width: 5 },
-                marker: { size: 10, symbol: 'line-ns-open' },
-                opacity: 0.3,
-                //name: name,
-                showlegend: false,    // Do not display in the legend
-                //showlegend: true,
-                legendgroup: name,    // Group HDI line with the corresponding density
-                hoverinfo: 'skip',
-                //hovertemplate: `${vals.x[0].toFixed(3)} ~ ${vals.x[1].toFixed(3)} :${name}<extra></extra>`,
-            });
-        }
-
-        const layout = {
-            title: title,
-            xaxis: { title: title_xaxis },
-            yaxis: { title: '', showticklabels: false },
-            hovermode: 'x unified',
-            legend: {tracegroupgap: 1},  // Set the space between legend lines
-        }
-
-        // Detect the window width (client-side)
-        const viewportWidth = window.innerWidth;
-
-        // Adjust legend position for mobile devices
-        if (viewportWidth < 768) {
-            layout.legend = {
-                orientation: 'h',  // Horizontal legend
-                x: 0,              // Align legend to the left
-                y: -1.2,           // Position legend below the plot
-                xanchor: 'left',   // Anchor legend's x position to the left
-                yanchor: 'top',    // Anchor legend's y position to the top
-            };
-            //layout.yaxis = {automargin: true,};
-            layout.margin = {
-                //l: layout.margin?.l || 10,  // Left margin
-                l: 0,
-                r: 0,  // Right margin
-                //t: layout.margin?.t || 0,  // Preserve the top margin if set, or default to 0
-                //b: layout.margin?.b || 0   // Preserve the bottom margin if set, or default to 0
-            };
-        }
-
-        // Format the figure
-        return {
-            data: traces,
-            layout: layout
-        };
-    }
-    """,
-    Output('density-plot', 'figure'),
-    Input('density-data', 'data')
 )
 
 if __name__ == '__main__':
