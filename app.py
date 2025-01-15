@@ -18,6 +18,7 @@ date_format = '%Y-%m-%d'
 months_in_year = 12
 cols_prc = ['수수료 적용 전', '수수료 적용 후']
 
+
 # Load price data
 df_prc = pd.read_csv(
     f'{path}/{file_prc}',
