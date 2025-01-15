@@ -3,7 +3,7 @@ run-name: Deploy HTML pages generated from Dash app
 on:
   push:
     branches:
-      - 'main'
+      - 'lbk209-patch-1'
     paths:
       - 'app.py'
       - 'ddf_utils.py'
