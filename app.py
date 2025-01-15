@@ -143,7 +143,7 @@ app.layout = dbc.Container([
                 clearable=False,
                 searchable=False
             ),
-            #width=3
+            width=3
         ),
         dbc.Col(
             daq.BooleanSwitch(
