@@ -29,8 +29,3 @@
     background-color: white; /* bootstrap info color */
     color: #0d6efd;
 }
-
-.label-style-mobile .nav-link {
-    padding-right: 0.5rem;
-    padding-left: 0.5rem;
-}
