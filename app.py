@@ -7,17 +7,27 @@ from ddf_utils import break_line, extract_topics
 from contents_info import info
 from contents_topic_250204 import topics, images
 
-dt = '250131'
-file_prc = f'fund_monthly_{dt}.csv'
-file_name = f'fund_name_{dt}.csv'
-file_dst = 'fund_density_ret3y_250113.json'
-path = '.'
-
-default_group = 2030
+default_group = '자산'
 base_prc = 1000
 date_format = '%Y-%m-%d'
 months_in_year = 12
 cols_prc = ['수수료 적용 전', '수수료 적용 후']
+category = {
+    'name': '펀드',
+    'seller': '판매',
+    'account': '계좌',
+    'manager': '운용',
+    'asset': '자산',
+    'strategy': '전략',
+    'region': '지역'
+}
+
+# data to import
+dt = '250131'
+file_prc = f'funds_monthly_{dt}.csv'
+file_cat = 'funds_categories_250308.csv'
+file_est = 'funds_bayesian_ret3y_250207.json'
+path = '.'
 
 # Load price data
 df_prc = pd.read_csv(
