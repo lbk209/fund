@@ -47,6 +47,7 @@ df_prc = pd.read_csv(
     dtype={'ticker': str},
     index_col=['ticker', 'date']
 )
+df_prc.columns = [cols_prc[x] for x in df_prc.columns]
 
 ## cateory
 df_cat = pd.read_csv(f'{path}/{file_cat}', index_col=['ticker'])
@@ -55,17 +56,27 @@ df_cat = pd.read_csv(f'{path}/{file_cat}', index_col=['ticker'])
 df_est = pd.read_csv(f'{path}/{file_est}', index_col=['ticker'])
 
 # Preprocess data to JSON-serializable
+## category
 data_cat = dict()
 for col in df_cat.columns:
     data_cat[col] = df_cat[col].reset_index().groupby(col)['ticker'].apply(list).to_dict()
 
-# additional vars
+## price
+data_prc = {}
+for col in df_prc.columns:
+    df = df_prc[col].unstack('ticker').sort_index().dropna(how='all')
+    df = df.reindex(df.index.strftime(date_format))
+    data_prc[col] = {x: df[x].dropna().to_dict() for x in df.columns}
+    #data_prc[col] = df.to_dict(orient='dict')
+    
+
+# define dropdown options and default value
 category_options = [{'label':category[x], 'value':x} for x in df_cat.columns]
 category_default = 'asset'
 group_default = []
 
-
 data_cat_json = json.dumps(data_cat)
+data_prc_json = json.dumps(data_prc)
 
 app = Dash(__name__, title="달달펀드",
            external_stylesheets=external_stylesheets)
@@ -82,6 +93,7 @@ app.index_string = f"""
     <body>
         <script>
             var dataCategory = {data_cat_json};
+            var dataPrice = {data_prc_json};
         </script>
         {{%app_entry%}}
         {{%config%}}
@@ -177,7 +189,8 @@ app.layout = dbc.Container([
     html.Br(),
     dcc.Textarea(
         id="ticker-textarea",
-        #hidden='hidden'
+        hidden='hidden', 
+        #cols=50
     ),
     dbc.Tooltip(
         '상대 비교',
@@ -194,6 +207,7 @@ app.layout = dbc.Container([
         target='ticker-copy',
         placement='bottom'
     ),
+    dcc.Store(id='ticker-data'),
     dcc.Store(id='price-data'),
     dcc.Store(id='hdi-data'),
     dcc.Location(id="url", refresh=False),  # To initialize the page
@@ -219,26 +233,104 @@ app.clientside_callback(
     Input('category-dropdown', 'value')
 )
 
+# update tickers based on selected groups and category
 app.clientside_callback(
     """
     function(groups, category) {
-        let obj = dataCategory[category];
-        let result = [];
-    
-        // Iterate through groups and collect values from obj
-        for (let group of groups) {
-            result.push(obj[group]);
-        }
-    
-        // Convert result array to a Set (to remove duplicates) and back to an array
-        result = [...new Set(result)];
+        if (!groups || !category) return [];
+        
+        let tickers = [];
+        groups.forEach(group => {
+            if (dataCategory[category] && dataCategory[category][group]) {
+                tickers = tickers.concat(dataCategory[category][group]);
+            }
+        });
+        return tickers;
+    }
+    """,
+    Output('ticker-data', 'data'),
+    Input('group-dropdown', 'value'),
+    State('category-dropdown', 'value')
+)
 
-        let flattenedResult = result.flat().join(\n);
-        //console.log(flattenedResult);
-        return flattenedResult;
+# save name and ticker of funds for copying
+app.clientside_callback(
+    """
+    function(tickers) {
+        let obj = dataCategory['name'];
+
+        let result = Object.entries(obj)
+                     .filter(([k, v]) => v.some(tkr => tickers.includes(tkr)))  // Ensure v is an array
+                     .map(([k, v]) => `${k}: ${v.join(',')}`);  // Join multiple tickers if needed
+
+        return result.join('\\n');
     }
     """,
     Output('ticker-textarea', 'value'),
-    Input('group-dropdown', 'value'),
-    State('category-dropdown', 'value')
+    Input('ticker-data', 'data'),
+)
+
+# update price data based on selected tickers
+app.clientside_callback(
+    """
+    function(data) {
+        if (!data || data.length === 0) return {};
+        
+        let data_prc_tkr = {};
+        for (let fee in dataPrice) {
+            data_prc_tkr[fee] = {};
+            for (let tkr in dataPrice[fee]) {
+                if (data.includes(tkr)) {
+                    data_prc_tkr[fee][tkr] = dataPrice[fee][tkr];
+                }
+            }
+        }
+        return data_prc_tkr;
+    }
+    """,
+    Output('price-data', 'data'),
+    Input('ticker-data', 'data')
+)
+
+# plot price history
+app.clientside_callback(
+    """
+    function(data, cost) {
+        if (!data || Object.keys(data).length === 0) {
+            return { data: [], layout: {} };  // Empty plot
+        }
+        
+        let fees = Object.keys(data);
+        let fee = cost ? fees[1] : fees[0];
+
+        if (!data[fee]) {
+            return { data: [], layout: {} };
+        }
+
+        let df = data[fee];  // This is already a dictionary
+        let traces = [];
+
+        for (let tkr in df) {
+            traces.push({
+                x: Object.keys(df[tkr]),  // Assuming keys are dates
+                y: Object.values(df[tkr]),  // Assuming values are prices
+                type: 'scatter',
+                mode: 'lines',
+                name: tkr
+            });
+        }
+
+        return {
+            data: traces,
+            layout: {
+                title: 'Price Data',
+                xaxis: { title: 'Date' },
+                yaxis: { title: 'Price' }
+            }
+        };
+    }
+    """,
+    Output('price-plot', 'figure'),
+    Input('price-data', 'data'),
+    Input('cost-boolean-switch', 'on')
 )
