@@ -94,6 +94,32 @@ app.index_string = f"""
         <script>
             var dataCategory = {data_cat_json};
             var dataPrice = {data_prc_json};
+            window.calculateCAGR = function(data_tkr) {{
+                if (!data_tkr || Object.keys(data_tkr).length < 2) return "Invalid data";
+
+                // Convert date keys to an array and sort them in ascending order
+                let dates = Object.keys(data_tkr).sort();
+                
+                // First and last values
+                let initialValue = data_tkr[dates[0]];
+                let finalValue = data_tkr[dates[dates.length - 1]];
+
+                // Compute number of months between first and last date
+                let startDate = new Date(dates[0]);
+                let endDate = new Date(dates[dates.length - 1]);
+                let months = (endDate.getFullYear() - startDate.getFullYear()) * 12 + (endDate.getMonth() - startDate.getMonth());
+
+                // Convert months to years
+                let years = months / 12;
+                if (years <= 0) return "Time period too short";
+
+                // Calculate CAGR
+                let cagr = (finalValue / initialValue) ** (1 / years) - 1;
+
+                // Format as percentage
+                //return "CAGR: " + (cagr * 100).toFixed(2) + "%";
+                return (cagr * 100);
+            }};
         </script>
         {{%app_entry%}}
         {{%config%}}
@@ -221,27 +247,64 @@ app.clientside_callback(
         let obj = dataCategory[category];
         let groups = Object.keys(obj);
         let maxLength = 20; // Set max label length
-    
-        return groups.map(group => ({
-            label: group.length > maxLength ? group.substring(0, maxLength) + "..." : group,
-            value: group,
-            title: group
-        }));
+
+        // Prepend "All" to the list
+        let result = [{ label: "All", value: "All", title: "All" }];
+
+        // Map over groups and append them to the list
+        result = result.concat(
+            groups.map(group => ({
+                label: group.length > maxLength ? group.substring(0, maxLength) + "..." : group,
+                value: group,
+                title: group
+            }))
+        );
+
+        return result;
     }
     """,
     Output('group-dropdown', 'options'),
     Input('category-dropdown', 'value')
 )
 
+# check 'All' in selected groups
+app.clientside_callback(
+    """
+    function processGroups(groups) {
+        // Check if 'All' is the last element
+        //if (groups.length > 0 && groups[groups.length - 1] === "All") {
+        if (groups.length === 0 || groups[groups.length - 1] === "All") {
+            return ["All"];
+        }
+    
+        // If 'All' is in the array but not the last element, return without 'All'
+        if (groups.includes("All")) {
+            return groups.filter(group => group !== "All");
+        }
+    
+        // Otherwise, return the original array
+        return groups;
+    }
+    """,
+    Output('group-dropdown', 'value'),
+    Input('group-dropdown', 'value')
+)
+
 # update tickers based on selected groups and category
 app.clientside_callback(
     """
     function(groups, category) {
-        if (!groups || !category) return [];
-        
+        if (!groups || !category || !dataCategory[category]) return [];
+
+        // If groups contain "All", return all tickers from the category
+        if (groups.includes("All")) {
+            return Object.values(dataCategory[category]).flat();
+        }
+
+        // Otherwise, return tickers only for the specified groups
         let tickers = [];
         groups.forEach(group => {
-            if (dataCategory[category] && dataCategory[category][group]) {
+            if (dataCategory[category][group]) {
                 tickers = tickers.concat(dataCategory[category][group]);
             }
         });
@@ -273,14 +336,14 @@ app.clientside_callback(
 # update price data based on selected tickers
 app.clientside_callback(
     """
-    function(data) {
-        if (!data || data.length === 0) return {};
+    function(tickers) {
+        if (!tickers || tickers.length === 0) return {};
         
         let data_prc_tkr = {};
         for (let fee in dataPrice) {
             data_prc_tkr[fee] = {};
             for (let tkr in dataPrice[fee]) {
-                if (data.includes(tkr)) {
+                if (tickers.includes(tkr)) {
                     data_prc_tkr[fee][tkr] = dataPrice[fee][tkr];
                 }
             }
