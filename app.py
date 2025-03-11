@@ -172,7 +172,7 @@ tab_info = html.Div([
 tabs_contents = [
     dbc.Tab(dcc.Graph(id='price-plot'), label='가격'),
     dbc.Tab(dcc.Graph(id='cagr-plot'), label='수익률'),
-    dbc.Tab(dcc.Graph(id='scatter-plot'), label='순위'),
+    dbc.Tab(dcc.Graph(id='scatter-plot'), label='순위', tab_id='tab_scatter'),
     dbc.Tab(tab_info, label='정보')
 ]
 tabs = dbc.Tabs(tabs_contents, id='tabs')
@@ -472,8 +472,9 @@ app.clientside_callback(
     """
     function(category) {
         // Define the scale for marker size
-        const scale_marker_size = 0.15;
-
+        const scale_marker_size = 0.1;
+        const add_marker_size = 5;
+        
         // Custom color map
         const color_map = ['#636EFA', '#EF553B', '#00CC96', '#AB63FA', '#FFA15A', '#19D3F3', '#FF6692', '#B6E880', '#FF97FF', '#FECB52'];
 
@@ -498,20 +499,54 @@ app.clientside_callback(
             return {
                 x: df_filtered.map(key => dataScatter['mean'][key]),
                 y: df_filtered.map(key => dataScatter['sd'][key]),
+                customdata: df_filtered.map(key => [
+                    dataScatter['name'][key], 
+                    dataScatter['hdi_3%'][key], 
+                    dataScatter['hdi_97%'][key]
+                ]),
                 mode: 'markers',
                 marker: {
-                    size: df_filtered.map(key => dataScatter['sharpe'][key] * scale_marker_size),
+                    size: df_filtered.map(key => dataScatter['sharpe'][key] * scale_marker_size + add_marker_size),
                     color: color_map[i % color_map.length],  // Assign a unique color per category
                     symbol: df_filtered.map(key => symbol_map[dataScatter[category][key]])  // Assign a unique symbol per category
                 },
-                name: cat  // Legend entry
+                name: cat,  // Legend entry
+                hovertemplate: '<span style=\"font-size: 120%;\">%{customdata[0]}</span><br>' +
+                               '수익률 순위(%): 평균 %{x:.0f}, 편차 %{y:.0f}<br>' +
+                               '수익률 구간: %{customdata[1]} ~ %{customdata[2]}<extra></extra>',
             };
         });
 
+        // Define layout
+        let layout = {
+            title: { text: '3년 평균 수익률 순위 (94% 확률 추정)' }, 
+            xaxis: { title: '평균 %순위', autorange: 'reversed', zeroline:false },
+            yaxis: { title: '편차 %순위', autorange: 'reversed', zeroline:false },
+            hovermode: 'closest',
+            legend: { title: category },
+            //width: 1000,
+            //height: 600,
+        };
+
         // Return the data for the figure
-        return { data: traces };
+        return { data: traces, layout: layout };
     }
     """,
     Output('scatter-plot', 'figure'),
     Input('category-dropdown', 'value')
+);
+
+# contrain fee/compare switch depending on tabs
+app.clientside_callback(
+    """
+    function(at, cost, compare) {
+        if (at === "tab_scatter") {
+            return [true, false];
+        } else {
+            return [cost, compare];
+        }
+    }
+    """,
+    [Output('cost-boolean-switch', 'on'), Output('compare-boolean-switch', 'on')],
+    [Input("tabs", "active_tab"), Input('cost-boolean-switch', 'on'), Input('compare-boolean-switch', 'on')]
 )
