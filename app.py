@@ -68,7 +68,16 @@ for col in df_prc.columns:
     df = df.reindex(df.index.strftime(date_format))
     data_prc[col] = {x: df[x].dropna().to_dict() for x in df.columns}
     #data_prc[col] = df.to_dict(orient='dict')
-    
+
+## Scatter of estimations
+xlabel, ylabel = 'mean', 'sd'
+df_s = df_est.apply(lambda x: x[xlabel]/ x[ylabel], axis=1).rank().rename('sharpe')
+data_est = df_est.join(df_s).join(df_cat)
+# convert mean/sd into respective ranks
+data_est[xlabel] = data_est[xlabel].rank(ascending=False, pct=True).mul(100)
+data_est[ylabel] = data_est[ylabel].rank(pct=True).mul(100)
+cols = ['mean', 'sd', 'hdi_3%', 'hdi_97%', 'sharpe'] + df_cat.columns.to_list()
+data_est = data_est[cols].to_dict()
 
 # define dropdown options and default value
 category_options = [{'label':category[x], 'value':x} for x in df_cat.columns]
@@ -77,6 +86,7 @@ group_default = []
 
 data_cat_json = json.dumps(data_cat)
 data_prc_json = json.dumps(data_prc)
+data_est_json = json.dumps(data_est)
 
 app = Dash(__name__, title="달달펀드",
            external_stylesheets=external_stylesheets)
@@ -94,6 +104,7 @@ app.index_string = f"""
         <script>
             var dataCategory = {data_cat_json};
             var dataPrice = {data_prc_json};
+            var dataScatter = {data_est_json};
             window.calculateCAGR = function(data_tkr) {{
                 if (!data_tkr || Object.keys(data_tkr).length < 2) return "Invalid data";
 
@@ -160,6 +171,8 @@ tab_info = html.Div([
 # tabs
 tabs_contents = [
     dbc.Tab(dcc.Graph(id='price-plot'), label='가격'),
+    dbc.Tab(dcc.Graph(id='cagr-plot'), label='수익률'),
+    dbc.Tab(dcc.Graph(id='scatter-plot'), label='순위'),
     dbc.Tab(tab_info, label='정보')
 ]
 tabs = dbc.Tabs(tabs_contents, id='tabs')
@@ -235,7 +248,7 @@ app.layout = dbc.Container([
     ),
     dcc.Store(id='ticker-data'),
     dcc.Store(id='price-data'),
-    dcc.Store(id='hdi-data'),
+    dcc.Store(id='cagr-data'),
     dcc.Location(id="url", refresh=False),  # To initialize the page
 #], fluid=True)  # Full-width container
 ])
@@ -396,4 +409,109 @@ app.clientside_callback(
     Output('price-plot', 'figure'),
     Input('price-data', 'data'),
     Input('cost-boolean-switch', 'on')
+)
+
+# update cagr data based on selected tickers
+app.clientside_callback(
+    """
+    function(tickers) {
+        if (!tickers || tickers.length === 0) return {};
+        
+        let data_cagr_tkr = {};
+        for (let fee in dataPrice) {
+            data_cagr_tkr[fee] = {};
+            for (let tkr in dataPrice[fee]) {
+                if (tickers.includes(tkr)) {
+                    data_cagr_tkr[fee][tkr] = calculateCAGR(dataPrice[fee][tkr]);
+                }
+            }
+        }
+        return data_cagr_tkr;
+    }
+    """,
+    Output('cagr-data', 'data'),
+    Input('ticker-data', 'data')
+)
+
+# bar chart of cagr
+app.clientside_callback(
+    """
+    function(data) {
+        if (!data || Object.keys(data).length === 0) {
+            return { data: [], layout: {} };
+        }
+
+        let categories = Object.keys(data);
+        let tickers = Object.keys(data[categories[0]]);
+        
+        let traces = categories.map(category => {
+            return {
+                x: tickers,
+                y: tickers.map(tkr => data[category][tkr] || 0),
+                type: 'bar',
+                name: category
+            };
+        });
+
+        let layout = {
+            title: 'CAGR Comparison',
+            barmode: 'group',
+            xaxis: { title: 'Ticker' },
+            yaxis: { title: 'CAGR' }
+        };
+
+        return { data: traces, layout: layout };
+    }
+    """,
+    Output('cagr-plot', 'figure'),
+    Input('cagr-data', 'data')
+)
+
+# scatter plot of mean/sd of 3yr return estimations
+app.clientside_callback(
+    """
+    function(category) {
+        // Define the scale for marker size
+        const scale_marker_size = 0.15;
+
+        // Custom color map
+        const color_map = ['#636EFA', '#EF553B', '#00CC96', '#AB63FA', '#FFA15A', '#19D3F3', '#FF6692', '#B6E880', '#FF97FF', '#FECB52'];
+
+        // Get the keys (i.e., the unique identifiers) for the data
+        const keys = Object.keys(dataScatter['mean']);
+
+        // Filter the unique categories based on the selected category
+        const unique_categories = [...new Set(keys.map(key => dataScatter[category][key]))];
+
+        // Create a map for symbols to be assigned to each category
+        const symbol_map = {};
+        unique_categories.forEach((cat, i) => {
+            symbol_map[cat] = i;
+        });
+
+        // Create traces for each category
+        let traces = unique_categories.map((cat, i) => {
+            // Filter data by the selected category
+            const df_filtered = keys.filter(key => dataScatter[category][key] === cat);
+
+            // Create the trace for each category
+            return {
+                x: df_filtered.map(key => dataScatter['mean'][key]),
+                y: df_filtered.map(key => dataScatter['sd'][key]),
+                mode: 'markers',
+                marker: {
+                    size: df_filtered.map(key => dataScatter['sharpe'][key] * scale_marker_size),
+                    color: color_map[i % color_map.length],  // Assign a unique color per category
+                    symbol: df_filtered.map(key => symbol_map[dataScatter[category][key]])  // Assign a unique symbol per category
+                },
+                name: cat  // Legend entry
+            };
+        });
+
+        // Return the data for the figure
+        return { data: traces };
+    }
+    """,
+    Output('scatter-plot', 'figure'),
+    Input('category-dropdown', 'value')
 )
