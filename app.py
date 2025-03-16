@@ -61,6 +61,9 @@ data_cat = dict()
 for col in df_cat.columns:
     data_cat[col] = df_cat[col].reset_index().groupby(col)['ticker'].apply(list).to_dict()
 
+## name for plots
+data_name = df_cat['name'].to_dict()
+
 ## price
 data_prc = {}
 for col in df_prc.columns:
@@ -84,7 +87,9 @@ category_options = [{'label':category[x], 'value':x} for x in df_cat.columns]
 category_default = 'asset'
 group_default = []
 
+
 data_cat_json = json.dumps(data_cat)
+data_name_json = json.dumps(data_name)
 data_prc_json = json.dumps(data_prc)
 data_est_json = json.dumps(data_est)
 
@@ -103,6 +108,7 @@ app.index_string = f"""
     <body>
         <script>
             var dataCategory = {data_cat_json};
+            var dataName = {data_name_json};
             var dataPrice = {data_prc_json};
             var dataScatter = {data_est_json};
             window.calculateCAGR = function(data_tkr) {{
@@ -171,9 +177,9 @@ tab_info = html.Div([
 # tabs
 tabs_contents = [
     dbc.Tab(dcc.Graph(id='price-plot'), label='가격'),
-    dbc.Tab(dcc.Graph(id='cagr-plot'), label='수익률'),
+    dbc.Tab(dcc.Graph(id='cagr-plot'), label='수익률', tab_id='tab_cagr'),
     dbc.Tab(dcc.Graph(id='scatter-plot'), label='순위', tab_id='tab_scatter'),
-    dbc.Tab(tab_info, label='정보')
+    dbc.Tab(tab_info, label='정보', tab_id='tab_info')
 ]
 tabs = dbc.Tabs(tabs_contents, id='tabs')
 
@@ -229,7 +235,7 @@ app.layout = dbc.Container([
     dcc.Textarea(
         id="ticker-textarea",
         hidden='hidden', 
-        #cols=50
+        #cols=50, rows=10
     ),
     dbc.Tooltip(
         '상대 비교',
@@ -247,8 +253,10 @@ app.layout = dbc.Container([
         placement='bottom'
     ),
     dcc.Store(id='ticker-data'),
+    dcc.Store(id='name-data'),
     dcc.Store(id='price-data'),
     dcc.Store(id='cagr-data'),
+    dcc.Store(id='scatter-data'),
     dcc.Location(id="url", refresh=False),  # To initialize the page
 #], fluid=True)  # Full-width container
 ])
@@ -333,12 +341,9 @@ app.clientside_callback(
 app.clientside_callback(
     """
     function(tickers) {
-        let obj = dataCategory['name'];
-
-        let result = Object.entries(obj)
-                     .filter(([k, v]) => v.some(tkr => tickers.includes(tkr)))  // Ensure v is an array
-                     .map(([k, v]) => `${k}: ${v.join(',')}`);  // Join multiple tickers if needed
-
+        let result = Object.entries(dataName)
+                     .filter(([k, v]) => tickers.includes(k)) // check if k is in tickers
+                     .map(([k, v]) => `${k}: ${v}`);
         return result.join('\\n');
     }
     """,
@@ -371,7 +376,7 @@ app.clientside_callback(
 # plot price history
 app.clientside_callback(
     """
-    function(data, cost) {
+    function(data, cost, compare) {
         if (!data || Object.keys(data).length === 0) {
             return { data: [], layout: {} };  // Empty plot
         }
@@ -383,7 +388,7 @@ app.clientside_callback(
             return { data: [], layout: {} };
         }
 
-        let df = data[fee];  // This is already a dictionary
+        let df = data[fee];
         let traces = [];
 
         for (let tkr in df) {
@@ -392,23 +397,49 @@ app.clientside_callback(
                 y: Object.values(df[tkr]),  // Assuming values are prices
                 type: 'scatter',
                 mode: 'lines',
-                name: tkr
+                name: dataName[tkr]
             });
         }
 
+        // Title logic
+        const titleBase = '펀드 가격 추이';
+        const titleComp = compare ? '상대 가격' : '펀드별 최근 결산 기준가격';
+        const titleCost = cost ? '수수료 적용' : null;
+
+        let title = `${titleBase} (${titleComp}`;
+        title = titleCost ? `${title}, ${titleCost})` : `${title})`;
+        
         return {
             data: traces,
             layout: {
-                title: 'Price Data',
-                xaxis: { title: 'Date' },
-                yaxis: { title: 'Price' }
+                title: { text: title},
+                hovermode: 'x',
+                yaxis: { title: '가격' },
+                xaxis: {
+                    rangeselector: {
+                        buttons: [
+                            {
+                                count: 3,
+                                label: "3y",
+                                step: "year",
+                                stepmode: "backward"
+                            },
+                            {
+                                step: "all",
+                                label: "All"
+                            }
+                        ]
+                    },
+                    type: "date"
+                },
             }
         };
     }
     """,
     Output('price-plot', 'figure'),
     Input('price-data', 'data'),
-    Input('cost-boolean-switch', 'on')
+    Input('cost-boolean-switch', 'on'),
+    Input('compare-boolean-switch', 'on'),
 )
 
 # update cagr data based on selected tickers
@@ -436,7 +467,7 @@ app.clientside_callback(
 # bar chart of cagr
 app.clientside_callback(
     """
-    function(data) {
+    function(data, compare) {
         if (!data || Object.keys(data).length === 0) {
             return { data: [], layout: {} };
         }
@@ -446,31 +477,67 @@ app.clientside_callback(
         
         let traces = categories.map(category => {
             return {
-                x: tickers,
+                x: tickers.map(tkr => dataName[tkr]),
                 y: tickers.map(tkr => data[category][tkr] || 0),
                 type: 'bar',
                 name: category
             };
         });
 
+        let title;
+        if (compare) {
+            //const dates = dat[sel].index;
+            //const dt0 = new Date(Math.min(...dates.map(d => new Date(d).getTime()))).toISOString().slice(0, 10);
+            //const dt1 = new Date(Math.max(...dates.map(d => new Date(d).getTime()))).toISOString().slice(0, 10);
+            //title = `펀드 연평균 수익률 (${dt0} ~ ${dt1})`;
+            title = '펀드 연평균 수익률';
+        } else {
+            title = '펀드 연평균 수익률 (펀드별 설정일 이후)';
+        };
+
         let layout = {
-            title: 'CAGR Comparison',
+            title: {text: title},
             barmode: 'group',
-            xaxis: { title: 'Ticker' },
-            yaxis: { title: 'CAGR' }
+            hovermode: 'x',
+            //xaxis: { title: 'Ticker' },
+            yaxis: { title: '연평균 수익률 (%)' }
         };
 
         return { data: traces, layout: layout };
     }
     """,
     Output('cagr-plot', 'figure'),
-    Input('cagr-data', 'data')
+    Input('cagr-data', 'data'),
+    Input('compare-boolean-switch', 'on')
+)
+
+# update scatter data based on selected tickers
+app.clientside_callback(
+    """
+    function(tickers) {
+        if (!tickers || tickers.length === 0) return {};
+
+        const filteredData = {};
+        for (const key in dataScatter) {
+            filteredData[key] = {};
+            for (const ticker of tickers) {
+              if (dataScatter[key][ticker] !== undefined) {
+                filteredData[key][ticker] = dataScatter[key][ticker];
+              }
+            }
+        }
+        
+        return filteredData;
+    }
+    """,
+    Output('scatter-data', 'data'),
+    Input('ticker-data', 'data')
 )
 
 # scatter plot of mean/sd of 3yr return estimations
 app.clientside_callback(
     """
-    function(category) {
+    function(data, category) {
         // Define the scale for marker size
         const scale_marker_size = 0.1;
         const add_marker_size = 5;
@@ -479,10 +546,10 @@ app.clientside_callback(
         const color_map = ['#636EFA', '#EF553B', '#00CC96', '#AB63FA', '#FFA15A', '#19D3F3', '#FF6692', '#B6E880', '#FF97FF', '#FECB52'];
 
         // Get the keys (i.e., the unique identifiers) for the data
-        const keys = Object.keys(dataScatter['mean']);
+        const keys = Object.keys(data['mean']);
 
         // Filter the unique categories based on the selected category
-        const unique_categories = [...new Set(keys.map(key => dataScatter[category][key]))];
+        const unique_categories = [...new Set(keys.map(key => data[category][key]))];
 
         // Create a map for symbols to be assigned to each category
         const symbol_map = {};
@@ -493,22 +560,22 @@ app.clientside_callback(
         // Create traces for each category
         let traces = unique_categories.map((cat, i) => {
             // Filter data by the selected category
-            const df_filtered = keys.filter(key => dataScatter[category][key] === cat);
+            const df_filtered = keys.filter(key => data[category][key] === cat);
 
             // Create the trace for each category
             return {
-                x: df_filtered.map(key => dataScatter['mean'][key]),
-                y: df_filtered.map(key => dataScatter['sd'][key]),
+                x: df_filtered.map(key => data['mean'][key]),
+                y: df_filtered.map(key => data['sd'][key]),
                 customdata: df_filtered.map(key => [
-                    dataScatter['name'][key], 
-                    dataScatter['hdi_3%'][key], 
-                    dataScatter['hdi_97%'][key]
+                    data['name'][key], 
+                    data['hdi_3%'][key], 
+                    data['hdi_97%'][key]
                 ]),
                 mode: 'markers',
                 marker: {
-                    size: df_filtered.map(key => dataScatter['sharpe'][key] * scale_marker_size + add_marker_size),
+                    size: df_filtered.map(key => data['sharpe'][key] * scale_marker_size + add_marker_size),
                     color: color_map[i % color_map.length],  // Assign a unique color per category
-                    symbol: df_filtered.map(key => symbol_map[dataScatter[category][key]])  // Assign a unique symbol per category
+                    symbol: df_filtered.map(key => symbol_map[data[category][key]])  // Assign a unique symbol per category
                 },
                 name: cat,  // Legend entry
                 hovertemplate: '<span style=\"font-size: 120%;\">%{customdata[0]}</span><br>' +
@@ -533,20 +600,42 @@ app.clientside_callback(
     }
     """,
     Output('scatter-plot', 'figure'),
+    Input('scatter-data', 'data'),
     Input('category-dropdown', 'value')
 );
 
 # contrain fee/compare switch depending on tabs
 app.clientside_callback(
     """
-    function(at, cost, compare) {
-        if (at === "tab_scatter") {
-            return [true, false];
+    function(tab, cost, compare) {
+        if (tab === "tab_scatter") {
+            return [true, false, true, true];
+        } else if (tab === "tab_info") {
+            return [cost, compare, true, true];
+        } else if (tab === "tab_cagr") {
+            return [true, compare, true, false];
         } else {
-            return [cost, compare];
+            return [cost, compare, false, false];
         }
     }
     """,
-    [Output('cost-boolean-switch', 'on'), Output('compare-boolean-switch', 'on')],
+    [Output('cost-boolean-switch', 'on'), Output('compare-boolean-switch', 'on'), 
+     Output('cost-boolean-switch', 'disabled'), Output('compare-boolean-switch', 'disabled')],
     [Input("tabs", "active_tab"), Input('cost-boolean-switch', 'on'), Input('compare-boolean-switch', 'on')]
+)
+
+# contrain category/group dropdown depending on tabs
+app.clientside_callback(
+    """
+    function(tab, category, group) {
+        if (tab === "tab_info") {
+            return [true, true];
+        } else {
+            return [false, false];
+        }
+    }
+    """,
+    Output('category-dropdown', 'disabled'), 
+    Output('group-dropdown', 'disabled'),
+    Input("tabs", "active_tab")
 )
