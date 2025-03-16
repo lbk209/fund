@@ -111,32 +111,6 @@ app.index_string = f"""
             var dataName = {data_name_json};
             var dataPrice = {data_prc_json};
             var dataScatter = {data_est_json};
-            window.calculateCAGR = function(data_tkr) {{
-                if (!data_tkr || Object.keys(data_tkr).length < 2) return "Invalid data";
-
-                // Convert date keys to an array and sort them in ascending order
-                let dates = Object.keys(data_tkr).sort();
-                
-                // First and last values
-                let initialValue = data_tkr[dates[0]];
-                let finalValue = data_tkr[dates[dates.length - 1]];
-
-                // Compute number of months between first and last date
-                let startDate = new Date(dates[0]);
-                let endDate = new Date(dates[dates.length - 1]);
-                let months = (endDate.getFullYear() - startDate.getFullYear()) * 12 + (endDate.getMonth() - startDate.getMonth());
-
-                // Convert months to years
-                let years = months / 12;
-                if (years <= 0) return "Time period too short";
-
-                // Calculate CAGR
-                let cagr = (finalValue / initialValue) ** (1 / years) - 1;
-
-                // Format as percentage
-                //return "CAGR: " + (cagr * 100).toFixed(2) + "%";
-                return (cagr * 100);
-            }};
         </script>
         {{%app_entry%}}
         {{%config%}}
@@ -280,7 +254,6 @@ app.clientside_callback(
                 title: group
             }))
         );
-
         return result;
     }
     """,
@@ -389,6 +362,9 @@ app.clientside_callback(
         }
 
         let df = data[fee];
+        if (compare) {
+            df = normalizePrice(df, 1000);
+        }
         let traces = [];
 
         for (let tkr in df) {
