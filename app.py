@@ -87,7 +87,6 @@ category_options = [{'label':category[x], 'value':x} for x in df_cat.columns]
 category_default = 'asset'
 group_default = []
 
-
 data_cat_json = json.dumps(data_cat)
 data_name_json = json.dumps(data_name)
 data_prc_json = json.dumps(data_prc)
@@ -229,7 +228,6 @@ app.layout = dbc.Container([
     dcc.Store(id='ticker-data'),
     dcc.Store(id='name-data'),
     dcc.Store(id='price-data'),
-    dcc.Store(id='cagr-data'),
     dcc.Store(id='scatter-data'),
     dcc.Location(id="url", refresh=False),  # To initialize the page
 #], fluid=True)  # Full-width container
@@ -418,29 +416,8 @@ app.clientside_callback(
     Input('compare-boolean-switch', 'on'),
 )
 
-# update cagr data based on selected tickers
-app.clientside_callback(
-    """
-    function(tickers) {
-        if (!tickers || tickers.length === 0) return {};
-        
-        let data_cagr_tkr = {};
-        for (let fee in dataPrice) {
-            data_cagr_tkr[fee] = {};
-            for (let tkr in dataPrice[fee]) {
-                if (tickers.includes(tkr)) {
-                    data_cagr_tkr[fee][tkr] = calculateCAGR(dataPrice[fee][tkr]);
-                }
-            }
-        }
-        return data_cagr_tkr;
-    }
-    """,
-    Output('cagr-data', 'data'),
-    Input('ticker-data', 'data')
-)
 
-# bar chart of cagr
+# plot bar chart of cagr
 app.clientside_callback(
     """
     function(data, compare) {
@@ -448,13 +425,29 @@ app.clientside_callback(
             return { data: [], layout: {} };
         }
 
-        let categories = Object.keys(data);
-        let tickers = Object.keys(data[categories[0]]);
+        // calc CAGR
+        let data_cagr = {};
+        for (let fee in data) {
+            let df = data[fee];
+            if (compare) { // normalize depending on compare switch
+                df = normalizePrice(df, 1000);
+                let tickers = Object.keys(df);
+                var dates = Object.keys(df[tickers[0]]);
+                console.log(dates)
+            };
+            data_cagr[fee] = {};
+            for (let tkr in df) {
+                data_cagr[fee][tkr] = calculateCAGR(df[tkr]);
+            }
+        }
+
+        let categories = Object.keys(data_cagr);
+        let tickers = Object.keys(data_cagr[categories[0]]);
         
         let traces = categories.map(category => {
             return {
                 x: tickers.map(tkr => dataName[tkr]),
-                y: tickers.map(tkr => data[category][tkr] || 0),
+                y: tickers.map(tkr => data_cagr[category][tkr] || 0),
                 type: 'bar',
                 name: category
             };
@@ -462,11 +455,9 @@ app.clientside_callback(
 
         let title;
         if (compare) {
-            //const dates = dat[sel].index;
-            //const dt0 = new Date(Math.min(...dates.map(d => new Date(d).getTime()))).toISOString().slice(0, 10);
-            //const dt1 = new Date(Math.max(...dates.map(d => new Date(d).getTime()))).toISOString().slice(0, 10);
-            //title = `펀드 연평균 수익률 (${dt0} ~ ${dt1})`;
-            title = '펀드 연평균 수익률';
+            const dt0 = new Date(Math.min(...dates.map(d => new Date(d).getTime()))).toISOString().slice(0, 10);
+            const dt1 = new Date(Math.max(...dates.map(d => new Date(d).getTime()))).toISOString().slice(0, 10);
+            title = `펀드 연평균 수익률 (${dt0} ~ ${dt1})`;
         } else {
             title = '펀드 연평균 수익률 (펀드별 설정일 이후)';
         };
@@ -483,7 +474,7 @@ app.clientside_callback(
     }
     """,
     Output('cagr-plot', 'figure'),
-    Input('cagr-data', 'data'),
+    Input('price-data', 'data'),
     Input('compare-boolean-switch', 'on')
 )
 
@@ -562,7 +553,7 @@ app.clientside_callback(
 
         // Define layout
         let layout = {
-            title: { text: '3년 평균 수익률 순위 (94% 확률 추정)' }, 
+            title: { text: '펀드 순위 (3년 수익률의 94% 확률 추정)' }, 
             xaxis: { title: '평균 %순위', autorange: 'reversed', zeroline:false },
             yaxis: { title: '편차 %순위', autorange: 'reversed', zeroline:false },
             hovermode: 'closest',
