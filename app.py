@@ -33,10 +33,10 @@ category = {
 }
 
 # data to import
-dt = '250131'
+dt = '250228'
 file_prc = f'funds_monthly_{dt}.csv'
-file_cat = 'funds_categories_250308.csv'
-file_est = 'funds_bayesian_ret3y_250207.csv'
+file_cat = 'funds_categories.csv'
+file_est = 'funds_bayesian_ret3y_250228.csv'
 path = '.'
 
 # Load data
@@ -82,6 +82,9 @@ data_est[ylabel] = data_est[ylabel].rank(pct=True).mul(100)
 cols = ['mean', 'sd', 'hdi_3%', 'hdi_97%', 'sharpe'] + df_cat.columns.to_list()
 data_est = data_est[cols].to_dict()
 
+## rank
+data_rank = df_est['mean'].rank(ascending=False).to_dict()
+
 # define dropdown options and default value
 category_options = [{'label':category[x], 'value':x} for x in df_cat.columns]
 category_default = 'asset'
@@ -91,6 +94,7 @@ data_cat_json = json.dumps(data_cat)
 data_name_json = json.dumps(data_name)
 data_prc_json = json.dumps(data_prc)
 data_est_json = json.dumps(data_est)
+data_rank_json = json.dumps(data_rank)
 
 app = Dash(__name__, title="달달펀드",
            external_stylesheets=external_stylesheets)
@@ -110,6 +114,7 @@ app.index_string = f"""
             var dataName = {data_name_json};
             var dataPrice = {data_prc_json};
             var dataScatter = {data_est_json};
+            var dataRank = {data_rank_json}
         </script>
         {{%app_entry%}}
         {{%config%}}
@@ -242,7 +247,12 @@ app.clientside_callback(
         let maxLength = 20; // Set max label length
 
         // Prepend "All" to the list
-        let result = [{ label: "All", value: "All", title: "All" }];
+        let result = [
+            { label: "All", value: "All", title: "All" },
+            { label: "#Top10", value: "#Top10", title: "#Top10"},
+            //{ label: "#Bottom10", value: "#Bottom10", title: "#Bottom10"},
+            //{ label: "#Random10", value: "#Random10", title: "#Random10"},
+        ];
 
         // Map over groups and append them to the list
         result = result.concat(
@@ -259,20 +269,26 @@ app.clientside_callback(
     Input('category-dropdown', 'value')
 )
 
-# check 'All' in selected groups
+# check option values for groups including 'All'
 app.clientside_callback(
     """
     function processGroups(groups) {
+        // split groups based on whether the first character is "#"
+        let groups_m = [];
+        let groups_opt = [];
+        groups.forEach(group => {
+            (group.startsWith("#") ? groups_opt : groups_m).push(group);
+        });
+
         // Check if 'All' is the last element
-        //if (groups.length > 0 && groups[groups.length - 1] === "All") {
-        if (groups.length === 0 || groups[groups.length - 1] === "All") {
-            return ["All"];
-        }
+        if (groups_m.length === 0 || groups_m[groups_m.length - 1] === 'All') {
+            return ['All', ...groups_opt]
+        };
     
         // If 'All' is in the array but not the last element, return without 'All'
-        if (groups.includes("All")) {
-            return groups.filter(group => group !== "All");
-        }
+        if (groups_m.includes('All')) {
+            return groups.filter(group => group !== 'All');
+        };
     
         // Otherwise, return the original array
         return groups;
@@ -286,20 +302,28 @@ app.clientside_callback(
 app.clientside_callback(
     """
     function(groups, category) {
-        if (!groups || !category || !dataCategory[category]) return [];
+        let tickers = [];
+        if (!groups || !category || !dataCategory[category]) return tickers;
 
         // If groups contain "All", return all tickers from the category
         if (groups.includes("All")) {
-            return Object.values(dataCategory[category]).flat();
-        }
+            tickers = Object.values(dataCategory[category]).flat();
+        } else {
+            // Otherwise, return tickers only for the specified groups
+            groups.forEach(group => {
+                if (dataCategory[category] && dataCategory[category][group]) {
+                    tickers = tickers.concat(dataCategory[category][group]);
+                }
+            });
+        };
 
-        // Otherwise, return tickers only for the specified groups
-        let tickers = [];
-        groups.forEach(group => {
-            if (dataCategory[category][group]) {
-                tickers = tickers.concat(dataCategory[category][group]);
-            }
-        });
+        // filter tickers depending on the order in dataRank
+        let groups_opt = groups.filter(group => group.startsWith('#'))
+        if (groups_opt.length === 1) {
+            const match = groups_opt[0].slice(1).match(/^([a-zA-Z]+)(\\d+)$/);
+            tickers = selectTickers(match[1], tickers, dataRank, num=match[2])
+            //tickers = selectTickers("Top", tickers, dataRank, num=10)
+        };
         return tickers;
     }
     """,
