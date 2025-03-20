@@ -69,3 +69,28 @@ window.normalizePrice = function(data_tickers, basePrc = 1000) {
     return result;
 };
 
+
+window.selectTickers = function(option, tickers, data_rank, num = 10) {
+    // Filter tickers that exist in data_rank
+    let validTickers = tickers.filter(ticker => data_rank.hasOwnProperty(ticker));
+    
+    if (option === "Top") {
+        return validTickers
+            .sort((a, b) => data_rank[a] - data_rank[b]) // Ascending order (lower rank is better)
+            .slice(0, num);
+    }
+    
+    if (option === "Bottom") {
+        return validTickers
+            .sort((a, b) => data_rank[b] - data_rank[a]) // Descending order (higher rank is worse)
+            .slice(0, num);
+    }
+    
+    if (option === "Random") {
+        return validTickers
+            .sort(() => Math.random() - 0.5) // Shuffle tickers randomly
+            .slice(0, num);
+    }
+    
+    return []; // Return empty array if option is invalid
+}
