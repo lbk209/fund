@@ -33,9 +33,9 @@ category = {
 }
 
 # data to import
-dt = '250131'
+dt = '250228'
 file_prc = f'funds_monthly_{dt}.csv'
-file_cat = 'funds_categories_250308.csv'
+file_cat = 'funds_categories.csv'
 file_est = 'funds_bayesian_ret3y_250207.csv'
 path = '.'
 
