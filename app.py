@@ -90,8 +90,7 @@ category_default = 'asset'
 group_default = []
 
 
-
-# convert to json
+# convert data to json
 data_cat_json = json.dumps(data_cat)
 data_name_json = json.dumps(data_name)
 data_prc_json = json.dumps(data_prc)
