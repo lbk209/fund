@@ -21,14 +21,14 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@main
 
       - name: Setup Pages
         if: github.ref == 'refs/heads/lbk209-patch-1'
-        uses: actions/configure-pages@lbk209-patch-1
+        uses: actions/configure-pages@main
 
       - name: Setup python
-        uses: actions/setup-python@lbk209-patch-1
+        uses: actions/setup-python@main
         with:
           python-version: '3.12'
           architecture: 'x64'
@@ -47,7 +47,7 @@ jobs:
 
       - name: Upload Artifact
         if: github.ref == 'refs/heads/lbk209-patch-1'
-        uses: actions/upload-pages-artifact@lbk209-patch-1
+        uses: actions/upload-pages-artifact@main
         with:
           path: "./pages_files"
 
@@ -68,4 +68,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@lbk209-patch-1
+        uses: actions/deploy-pages@main
