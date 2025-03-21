@@ -89,6 +89,7 @@ category_options = [{'label':category[x], 'value':x} for x in df_cat.columns]
 category_default = 'asset'
 group_default = []
 
+
 # convert data to json
 data_cat_json = json.dumps(data_cat)
 data_name_json = json.dumps(data_name)
@@ -166,7 +167,8 @@ tabs_contents = [
     dbc.Tab(dcc.Graph(id='price-plot'), label='가격'),
     dbc.Tab(dcc.Graph(id='cagr-plot'), label='수익률', tab_id='tab_cagr'),
     dbc.Tab(dcc.Graph(id='scatter-plot'), label='순위', tab_id='tab_scatter'),
-    dbc.Tab(tab_notice, label='알림'),
+    dbc.Tab(tab_notice, label='알림',
+            label_class_name="tab-label new-badge-label"),
     dbc.Tab(tab_info, label='정보', tab_id='tab_info')
 ]
 tabs = dbc.Tabs(tabs_contents, id='tabs')
@@ -181,7 +183,7 @@ app.layout = dbc.Container([
                 options=category_options,
                 value=category_default,
                 clearable=False,
-            ), style={'min-width':'10%', 'max-width':'100%'}
+            ), style={'min-width':'15%'}
         ),
         html.Div(
             dcc.Dropdown(
@@ -189,7 +191,7 @@ app.layout = dbc.Container([
                 #options=groups,
                 value=group_default,
                 multi=True,
-            ), style={'min-width':'30%', 'max-width':'100%'}
+            ), style={'min-width':'55%', 'max-width':'100%'}
         ),
         daq.BooleanSwitch(
             id='compare-boolean-switch',
