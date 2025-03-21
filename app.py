@@ -732,3 +732,7 @@ app.clientside_callback(
     Output('tabs', 'children'),  # Update the children of tabs (triggering the callback)
     Input('url', 'pathname'),
 )
+
+# Run the app
+if __name__ == '__main__':
+    app.run_server(debug=False, port=8000)
