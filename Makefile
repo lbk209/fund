@@ -1,23 +1,23 @@
 run_app:
 	python3 app.py & sleep 30
 
-	wget -r http://127.0.0.1:8080/
-	wget -r http://127.0.0.1:8080/_dash-layout 
-	wget -r http://127.0.0.1:8080/_dash-dependencies
+	wget -r http://127.0.0.1:8050/
+	wget -r http://127.0.0.1:8050/_dash-layout 
+	wget -r http://127.0.0.1:8050/_dash-dependencies
 
-	wget -r http://127.0.0.1:8080/_dash-component-suites/dash/dcc/async-graph.js
-	wget -r http://127.0.0.1:8080/_dash-component-suites/dash/dcc/async-highlight.js
-	wget -r http://127.0.0.1:8080/_dash-component-suites/dash/dcc/async-markdown.js
-	wget -r http://127.0.0.1:8080/_dash-component-suites/dash/dcc/async-datepicker.js
-	wget -r http://127.0.0.1:8080/_dash-component-suites/dash/dcc/async-dropdown.js
+	wget -r http://127.0.0.1:8050/_dash-component-suites/dash/dcc/async-graph.js
+	wget -r http://127.0.0.1:8050/_dash-component-suites/dash/dcc/async-highlight.js
+	wget -r http://127.0.0.1:8050/_dash-component-suites/dash/dcc/async-markdown.js
+	wget -r http://127.0.0.1:8050/_dash-component-suites/dash/dcc/async-datepicker.js
+	wget -r http://127.0.0.1:8050/_dash-component-suites/dash/dcc/async-dropdown.js
 
-	wget -r http://127.0.0.1:8080/_dash-component-suites/dash/dash_table/async-table.js
-	wget -r http://127.0.0.1:8080/_dash-component-suites/dash/dash_table/async-highlight.js
+	wget -r http://127.0.0.1:8050/_dash-component-suites/dash/dash_table/async-table.js
+	wget -r http://127.0.0.1:8050/_dash-component-suites/dash/dash_table/async-highlight.js
 
-	wget -r http://127.0.0.1:8080/_dash-component-suites/plotly/package_data/plotly.min.js
+	wget -r http://127.0.0.1:8050/_dash-component-suites/plotly/package_data/plotly.min.js
 
 	# Move scraped files
-	mv 127.0.0.1:8080 pages_files
+	mv 127.0.0.1:8050 pages_files
 
 	# Copy assets folder into the deployment folder
 	mkdir -p pages_files/assets
@@ -37,4 +37,4 @@ run_app:
 
 clean_dirs:
 	ls
-	rm -rf 127.0.0.1:8080/
+	rm -rf 127.0.0.1:8050/
