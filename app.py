@@ -90,6 +90,7 @@ category_options = [{'label':category[x], 'value':x} for x in df_cat.columns]
 category_default = 'asset'
 group_default = []
 
+
 data_cat_json = json.dumps(data_cat)
 data_name_json = json.dumps(data_name)
 data_prc_json = json.dumps(data_prc)
