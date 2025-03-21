@@ -5,7 +5,6 @@ import dash_daq as daq
 import json
 from ddf_utils import break_line, extract_topics
 from contents_info import info
-from contents_topic_250204 import topics, images
 
 external_stylesheets = [dbc.themes.CERULEAN, 
                         #dbc.themes.BOOTSTRAP,
