@@ -21,7 +21,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@lbk209-patch-1
+        uses: actions/checkout@v4
 
       - name: Setup Pages
         if: github.ref == 'refs/heads/lbk209-patch-1'
