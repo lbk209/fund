@@ -94,3 +94,30 @@ window.selectTickers = function(option, tickers, data_rank, num = 10) {
     
     return []; // Return empty array if option is invalid
 }
+
+
+window.updateLayout = function(layout, x = 0, y = -0.5, width = 768) {
+    // Detect the window width (client-side)
+    const viewportWidth = window.innerWidth;
+    if (viewportWidth < width) {
+        // Adjust legend position for mobile devices
+        layout.legend = {
+            ...layout.legend, // Preserve existing legend properties
+            orientation: 'h',  // Horizontal legend
+            x: x,              // Align legend to the left
+            y: y,           // Position legend below the plot
+            xanchor: 'left',   // Anchor legend's x position to the left
+            yanchor: 'top',    // Anchor legend's y position to the top
+        };
+        layout.yaxis = {...layout.yaxis, automargin: true,};
+        layout.margin = {
+            ...layout.margin,
+            //l: layout.margin?.l || 10,  // Left margin
+            l: 0,
+            r: 0,  // Right margin
+            //t: layout.margin?.t || 0,  // Preserve the top margin if set, or default to 0
+            //b: layout.margin?.b || 0   // Preserve the bottom margin if set, or default to 0
+        };
+    }
+    return layout;
+}
