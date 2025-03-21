@@ -260,10 +260,10 @@ app.clientside_callback(
 
         // Prepend "All" to the list
         let options = [
-            { label: "All", value: "All", title: "All" },
-            { label: "#Top10", value: "#Top10", title: "#Top10"},
-            { label: "#Bottom10", value: "#Bottom10", title: "#Bottom10"},
-            { label: "#Random10", value: "#Random10", title: "#Random10"},
+            { label: "All", value: "All", title: "전체 펀드" },
+            { label: "#Top10", value: "#Top10", title: "3년 수익률 추정 평균 기준"},
+            { label: "#Bottom10", value: "#Bottom10", title: "3년 수익률 추정 평균 기준"},
+            { label: "#Random10", value: "#Random10", title: "3년 수익률 추정 평균 기준"},
         ];
 
         // Map over groups and append them to the list
