@@ -152,11 +152,21 @@ tab_info = html.Div([
     #])
 ])
 
+# notice
+tab_notice = html.Div(
+    children=[
+        dcc.Store(id="load-giscus", data=1),  # Trigger the clientside callback on initial load
+        html.Div(className="giscus"),  # Placeholder for Giscus
+    ]
+    , style={'margin-top': '20px'}
+)
+
 # tabs
 tabs_contents = [
     dbc.Tab(dcc.Graph(id='price-plot'), label='가격'),
     dbc.Tab(dcc.Graph(id='cagr-plot'), label='수익률', tab_id='tab_cagr'),
     dbc.Tab(dcc.Graph(id='scatter-plot'), label='순위', tab_id='tab_scatter'),
+    dbc.Tab(tab_notice, label='알림'),
     dbc.Tab(tab_info, label='정보', tab_id='tab_info')
 ]
 tabs = dbc.Tabs(tabs_contents, id='tabs')
@@ -247,55 +257,63 @@ app.clientside_callback(
         let maxLength = 20; // Set max label length
 
         // Prepend "All" to the list
-        let result = [
+        let options = [
             { label: "All", value: "All", title: "All" },
             { label: "#Top10", value: "#Top10", title: "#Top10"},
-            //{ label: "#Bottom10", value: "#Bottom10", title: "#Bottom10"},
-            //{ label: "#Random10", value: "#Random10", title: "#Random10"},
+            { label: "#Bottom10", value: "#Bottom10", title: "#Bottom10"},
+            { label: "#Random10", value: "#Random10", title: "#Random10"},
         ];
 
         // Map over groups and append them to the list
-        result = result.concat(
+        options = options.concat(
             groups.map(group => ({
                 label: group.length > maxLength ? group.substring(0, maxLength) + "..." : group,
                 value: group,
                 title: group
             }))
         );
-        return result;
+        return [options, ['All', '#Top10']];
     }
     """,
     Output('group-dropdown', 'options'),
+    Output('group-dropdown', 'value'),
     Input('category-dropdown', 'value')
 )
 
-# check option values for groups including 'All'
+# check group values with 'All' or ranking
 app.clientside_callback(
     """
     function processGroups(groups) {
-        // split groups based on whether the first character is "#"
-        let groups_m = [];
-        let groups_opt = [];
-        groups.forEach(group => {
-            (group.startsWith("#") ? groups_opt : groups_m).push(group);
-        });
+        // Split groups into `groups_m` (regular) and `groups_opt` (options)
+        let { groups_m, group_opt } = (groups || []).reduce((acc, group) => {
+            if (group.startsWith("#")) {
+                acc.group_opt = group; // Keep only the latest rank option
+            } else {
+                acc.groups_m.push(group);
+            }
+            return acc;
+        }, { groups_m: [], group_opt: null });
+
+        //console.log(groups_m)
+        //console.log(group_opt)
 
         // Check if 'All' is the last element
         if (groups_m.length === 0 || groups_m[groups_m.length - 1] === 'All') {
-            return ['All', ...groups_opt]
+            return ['All', group_opt].filter(Boolean); // Remove null values
         };
     
         // If 'All' is in the array but not the last element, return without 'All'
         if (groups_m.includes('All')) {
-            return groups.filter(group => group !== 'All');
+            return groups_m.filter(group => group !== 'All').concat(group_opt).filter(Boolean);
         };
-    
-        // Otherwise, return the original array
-        return groups;
+        
+        // Otherwise, return the array with new rank option
+        return groups_m.concat(group_opt).filter(Boolean);
     }
     """,
-    Output('group-dropdown', 'value'),
-    Input('group-dropdown', 'value')
+    Output('group-dropdown', 'value', allow_duplicate=True),
+    Input('group-dropdown', 'value'),
+    prevent_initial_call=True
 )
 
 # update tickers based on selected groups and category
@@ -318,7 +336,8 @@ app.clientside_callback(
         };
 
         // filter tickers depending on the order in dataRank
-        let groups_opt = groups.filter(group => group.startsWith('#'))
+        //let groups_opt = groups.filter(group => group.startsWith('#'))
+        const groups_opt = groups?.filter(group => group.startsWith('#')) || [];
         if (groups_opt.length === 1) {
             const match = groups_opt[0].slice(1).match(/^([a-zA-Z]+)(\\d+)$/);
             tickers = selectTickers(match[1], tickers, dataRank, num=match[2])
@@ -406,31 +425,36 @@ app.clientside_callback(
 
         let title = `${titleBase} (${titleComp}`;
         title = titleCost ? `${title}, ${titleCost})` : `${title})`;
-        
+
+        let layout = {
+            title: { text: title},
+            hovermode: 'x',
+            yaxis: { title: '가격' },
+            xaxis: {
+                rangeselector: {
+                    buttons: [
+                        {
+                            count: 3,
+                            label: "3y",
+                            step: "year",
+                            stepmode: "backward"
+                        },
+                        {
+                            step: "all",
+                            label: "All"
+                        }
+                    ]
+                },
+                type: "date"
+            },
+        }
+
+        // Adjust legend position for mobile devices
+        layout = updateLayout(layout, x = 0, y = -0.5, width = 768)
+                
         return {
             data: traces,
-            layout: {
-                title: { text: title},
-                hovermode: 'x',
-                yaxis: { title: '가격' },
-                xaxis: {
-                    rangeselector: {
-                        buttons: [
-                            {
-                                count: 3,
-                                label: "3y",
-                                step: "year",
-                                stepmode: "backward"
-                            },
-                            {
-                                step: "all",
-                                label: "All"
-                            }
-                        ]
-                    },
-                    type: "date"
-                },
-            }
+            layout: layout
         };
     }
     """,
@@ -493,6 +517,9 @@ app.clientside_callback(
             //xaxis: { title: 'Ticker' },
             yaxis: { title: '연평균 수익률 (%)' }
         };
+
+        // Adjust legend position for mobile devices
+        layout = updateLayout(layout, x = 0, y = -0.5, width = 768)
 
         return { data: traces, layout: layout };
     }
@@ -581,10 +608,14 @@ app.clientside_callback(
             xaxis: { title: '평균 %순위', autorange: 'reversed', zeroline:false },
             yaxis: { title: '편차 %순위', autorange: 'reversed', zeroline:false },
             hovermode: 'closest',
+            showlegend: true,
             legend: { title: category },
             //width: 1000,
             //height: 600,
         };
+
+        // Adjust legend position for mobile devices
+        layout = updateLayout(layout, x = 0, y = -0.5, width = 768)
 
         // Return the data for the figure
         return { data: traces, layout: layout };
@@ -629,4 +660,74 @@ app.clientside_callback(
     Output('category-dropdown', 'disabled'), 
     Output('group-dropdown', 'disabled'),
     Input("tabs", "active_tab")
+)
+
+# Define clientside callback to load and initialize Giscus
+app.clientside_callback(
+    """
+    function(data) {
+        if (!data) return;  // Do nothing if data hasn't been triggered
+
+        // Check if Giscus script is already loaded
+        if (!document.querySelector('script[src="https://giscus.app/client.js"]')) {
+            // Create the Giscus script element
+            var script = document.createElement('script');
+            script.src = "https://giscus.app/client.js";
+            script.setAttribute("data-repo", "lbk209/fund");
+            script.setAttribute("data-repo-id", "R_kgDONicCMA");
+            script.setAttribute("data-category", "Announcements");
+            script.setAttribute("data-category-id", "DIC_kwDONicCMM4Cluz9");
+            script.setAttribute("data-mapping", "pathname");
+            script.setAttribute("data-strict", "0");
+            script.setAttribute("data-reactions-enabled", "1");
+            script.setAttribute("data-emit-metadata", "0");
+            script.setAttribute("data-input-position", "bottom");
+            script.setAttribute("data-theme", "light");
+            script.setAttribute("data-lang", "ko");
+            script.setAttribute("crossorigin", "anonymous");
+            script.async = true;
+
+            // Append the script to the body
+            document.body.appendChild(script);
+
+            // Re-initialize Giscus when the script is loaded
+            script.onload = function() {
+                var event = new Event("giscus:reset");
+                document.querySelector(".giscus").dispatchEvent(event);
+            };
+        } else {
+            // If script is already loaded, just reset Giscus
+            var event = new Event("giscus:reset");
+            document.querySelector(".giscus").dispatchEvent(event);
+        }
+
+        return null;
+    }
+    """,
+    Output("load-giscus", "data"),
+    Input("load-giscus", "data"),
+)
+
+# Register the clientside callback to check if on mobile and apply label-style-mobile to all tabs
+app.clientside_callback(
+    """
+    function(pathname) {
+        // Check if the current window width indicates a mobile device
+        const isMobile = window.innerWidth < 768;
+        const tabElements = document.querySelectorAll('.nav-item');  // All tab items
+        
+        // Add or remove the CSS class for label styling for all tabs
+        tabElements.forEach(function(tabElement) {
+            if (isMobile) {
+                tabElement.classList.add('label-style-mobile');
+            } else {
+                tabElement.classList.remove('label-style-mobile');
+            }
+        });
+        
+        return window.dash_clientside.no_update;  // Return no update to children
+    }
+    """,
+    Output('tabs', 'children'),  # Update the children of tabs (triggering the callback)
+    Input('url', 'pathname'),
 )
