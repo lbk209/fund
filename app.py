@@ -613,7 +613,7 @@ app.clientside_callback(
             mode: 'lines',
             //line: { color: 'black', dash: 'dash' }, // Dashed black line
             line: { color: 'rgba(204, 204, 204, 0.5)', width: 1},
-            name: 'y = x'
+            showlegend: false
         };
     
         // Add the line trace to the traces array
