@@ -604,6 +604,21 @@ app.clientside_callback(
             };
         });
 
+        // Define the reference line (y = x)
+        const x_min = 0;
+        const x_max = 100;
+        const line_trace = {
+            x: [x_min, x_max],
+            y: [x_min, x_max],  // Slope 1 line (y = x)
+            mode: 'lines',
+            //line: { color: 'black', dash: 'dash' }, // Dashed black line
+            line: { color: 'rgba(204, 204, 204, 0.5)', width: 1},
+            name: 'y = x'
+        };
+    
+        // Add the line trace to the traces array
+        traces.push(line_trace);
+
         // Define layout
         let layout = {
             title: { text: '펀드 순위 (3년 수익률의 94% 확률 추정)' }, 
