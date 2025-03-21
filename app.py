@@ -27,7 +27,6 @@ df_prc = pd.read_csv(
     index_col=['group', 'ticker', 'date']
 )
 
-
 # Load fund names
 fund_name = pd.read_csv(f'{path}/{file_name}', dtype={'ticker': str}, index_col=[0])
 fund_name = fund_name.squeeze().to_dict()
