@@ -89,6 +89,7 @@ category_options = [{'label':category[x], 'value':x} for x in df_cat.columns]
 category_default = 'asset'
 group_default = ['All', '#Top10']
 
+
 # convert data to json
 data_cat_json = json.dumps(data_cat)
 data_name_json = json.dumps(data_name)
@@ -621,9 +622,11 @@ app.clientside_callback(
         traces.push(line_trace);
 
         // Adding annotation
-        var font = {size:30, weight:'bold', color:'rgba(204, 204, 204, 0.5)'}
-        var ant1 = {x:70, y:30, showarrow:false, font:font, text:'안정성'};
-        var ant2 = {x:30, y:70, showarrow:false, font:font, text:'수익성'};
+        var font = {size:30, weight:'bold', color:'rgba(204, 204, 204, 0.5)',
+                    //family: 'Lucida Console, Courier, monospace'
+                    }
+        var ant1 = {x:70, y:30, showarrow:false, font:font, text:'안 정 성'};
+        var ant2 = {x:30, y:70, showarrow:false, font:font, text:'수 익 성'};
 
         // Define layout
         let layout = {
