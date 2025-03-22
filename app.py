@@ -89,12 +89,21 @@ category_options = [{'label':category[x], 'value':x} for x in df_cat.columns]
 category_default = 'asset'
 group_default = ['All', '#Top10']
 
+# additional group option for every cat
+label = '이거어때?'
+desc = '3년수익률 추정 평균/편차 순위 모두 상위권 펀드'
+tickers = ['K55364CF7048', 'KR5235AK9808']
+_ = [data_cat[x].update({label:tickers}) for x in data_cat.keys()]
+data_title = {label: desc} # define option title other than label for group options
+
+
 # convert data to json
 data_cat_json = json.dumps(data_cat)
 data_name_json = json.dumps(data_name)
 data_prc_json = json.dumps(data_prc)
 data_est_json = json.dumps(data_est)
 data_rank_json = json.dumps(data_rank)
+data_title_json = json.dumps(data_title)
 
 app = Dash(__name__, title="달달펀드",
            external_stylesheets=external_stylesheets)
@@ -115,6 +124,7 @@ app.index_string = f"""
             var dataPrice = {data_prc_json};
             var dataScatter = {data_est_json};
             var dataRank = {data_rank_json}
+            var dataTitle = {data_title_json};
         </script>
         {{%app_entry%}}
         {{%config%}}
@@ -270,7 +280,7 @@ app.clientside_callback(
             groups.map(group => ({
                 label: group.length > maxLength ? group.substring(0, maxLength) + "..." : group,
                 value: group,
-                title: group
+                title: dataTitle[group] || group  // Use group name if dataTitle[group] is missing
             }))
         );
         // reset group values to 'All' and ranking selected before
@@ -414,7 +424,7 @@ app.clientside_callback(
         for (let tkr in df) {
             traces.push({
                 x: Object.keys(df[tkr]),  // Assuming keys are dates
-                y: Object.values(df[tkr]),  // Assuming values are prices
+                y: Object.values(df[tkr]).map(val => Math.round(val)),  // Assuming values are prices
                 type: 'scatter',
                 mode: 'lines',
                 name: dataName[tkr]
@@ -498,7 +508,8 @@ app.clientside_callback(
         let traces = categories.map(category => {
             return {
                 x: tickers.map(tkr => dataName[tkr]),
-                y: tickers.map(tkr => data_cagr[category][tkr] || 0),
+                //y: tickers.map(tkr => data_cagr[category][tkr] || 0),
+                y: tickers.map(tkr => Math.round((data_cagr[category][tkr] || 0) * 10) / 10), // Round to 1 decimals
                 type: 'bar',
                 name: category
             };
@@ -621,9 +632,11 @@ app.clientside_callback(
         traces.push(line_trace);
 
         // Adding annotation
-        var font = {size:30, weight:'bold', color:'rgba(204, 204, 204, 0.5)'}
-        var ant1 = {x:70, y:30, showarrow:false, font:font, text:'안정성'};
-        var ant2 = {x:30, y:70, showarrow:false, font:font, text:'수익성'};
+        var font = {size:30, weight:'bold', color:'rgba(204, 204, 204, 0.5)',
+                    //family: 'Lucida Console, Courier, monospace'
+                    }
+        var ant1 = {x:70, y:30, showarrow:false, font:font, text:'안 정 성'};
+        var ant2 = {x:30, y:70, showarrow:false, font:font, text:'수 익 성'};
 
         // Define layout
         let layout = {
