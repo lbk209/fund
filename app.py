@@ -87,7 +87,7 @@ data_rank = df_est['mean'].rank(ascending=False).to_dict()
 # define dropdown options and default value
 category_options = [{'label':category[x], 'value':x} for x in df_cat.columns]
 category_default = 'asset'
-group_default = []
+group_default = ['All', '#Top10']
 
 
 # convert data to json
@@ -253,7 +253,7 @@ app.layout = dbc.Container([
 # update group options depending on category
 app.clientside_callback(
     """
-    function(category) {
+    function(category, groups_opt) {
         let obj = dataCategory[category];
         let groups = Object.keys(obj);
         let maxLength = 20; // Set max label length
@@ -274,12 +274,15 @@ app.clientside_callback(
                 title: group
             }))
         );
-        return [options, ['All', '#Top10']];
+        // reset group values to 'All' and ranking selected before
+        groups_opt = groups_opt?.filter(group => group.startsWith('#')) || [];
+        return [options, ['All', ...groups_opt]];
     }
     """,
     Output('group-dropdown', 'options'),
     Output('group-dropdown', 'value'),
-    Input('category-dropdown', 'value')
+    Input('category-dropdown', 'value'),
+    State('group-dropdown', 'value')
 )
 
 # check group values with 'All' or ranking
@@ -338,7 +341,6 @@ app.clientside_callback(
         };
 
         // filter tickers depending on the order in dataRank
-        //let groups_opt = groups.filter(group => group.startsWith('#'))
         const groups_opt = groups?.filter(group => group.startsWith('#')) || [];
         if (groups_opt.length === 1) {
             const match = groups_opt[0].slice(1).match(/^([a-zA-Z]+)(\\d+)$/);
@@ -605,7 +607,7 @@ app.clientside_callback(
         });
 
         // Define the reference line (y = x)
-        const x_min = 0;
+        const x_min = 1;
         const x_max = 100;
         const line_trace = {
             x: [x_min, x_max],
@@ -619,16 +621,22 @@ app.clientside_callback(
         // Add the line trace to the traces array
         traces.push(line_trace);
 
+        // Adding annotation
+        var font = {size:30, weight:'bold', color:'rgba(204, 204, 204, 0.5)'}
+        var ant1 = {x:70, y:30, showarrow:false, font:font, text:'안정성'};
+        var ant2 = {x:30, y:70, showarrow:false, font:font, text:'수익성'};
+
         // Define layout
         let layout = {
             title: { text: '펀드 순위 (3년 수익률의 94% 확률 추정)' }, 
-            xaxis: { title: '평균 %순위', autorange: 'reversed', zeroline:false },
-            yaxis: { title: '편차 %순위', autorange: 'reversed', zeroline:false },
+            xaxis: { title: '평균 %순위', autorange: 'reversed', zeroline:false},
+            yaxis: { title: '편차 %순위', autorange: 'reversed', zeroline:false},
+            annotations: [ant1, ant2],
             hovermode: 'closest',
             showlegend: true,
             legend: { title: category },
-            //width: 1000,
-            //height: 600,
+            //width: 600,
+            height: 500,
         };
 
         // Adjust legend position for mobile devices
