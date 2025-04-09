@@ -503,7 +503,9 @@ app.clientside_callback(
         }
 
         let categories = Object.keys(data_cagr);
-        let tickers = Object.keys(data_cagr[categories[0]]);
+        let tickers = Object.entries(data_cagr[categories[1]]) // use cagr after fees for sorting
+                    .sort((a, b) => b[1] - a[1]) // sort descending by CAGR
+                    .map(entry => entry[0]);     // extract just the ticker names
         
         let traces = categories.map(category => {
             return {
