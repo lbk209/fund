@@ -252,6 +252,7 @@ app.layout = dbc.Container([
         placement='bottom'
     ),
     dcc.Store(id='ticker-data'),
+    dcc.Store(id='previous-data'),
     dcc.Store(id='name-data'),
     dcc.Store(id='price-data'),
     dcc.Store(id='scatter-data'),
@@ -262,7 +263,7 @@ app.layout = dbc.Container([
 # update group options depending on category
 app.clientside_callback(
     """
-    function(category, groups_opt) {
+    function(category, groups_opt, tickers) {
         let obj = dataCategory[category];
         let groups = Object.keys(obj);
         let maxLength = 20; // Set max label length
@@ -274,6 +275,10 @@ app.clientside_callback(
             { label: "#Bottom10", value: "#Bottom10", title: "3년 수익률 추정 평균 기준"},
             { label: "#Random10", value: "#Random10", title: "3년 수익률 추정 평균 기준"},
         ];
+        
+        if (tickers) {
+            options = [...options, { label: "𝑷𝒓𝒆𝒗𝒊𝒐𝒖𝒔", value: "Previous", title: "이전 선택"}]
+        }
 
         // Map over groups and append them to the list
         options = options.concat(
@@ -285,13 +290,16 @@ app.clientside_callback(
         );
         // reset group values to 'All' and ranking selected before
         groups_opt = groups_opt?.filter(group => group.startsWith('#')) || [];
-        return [options, ['All', ...groups_opt]];
+        const value = [tickers ? 'Previous' : 'All', ...groups_opt];
+        return [options, value, tickers];
     }
     """,
     Output('group-dropdown', 'options'),
     Output('group-dropdown', 'value'),
+    Output('previous-data', 'data'),
     Input('category-dropdown', 'value'),
-    State('group-dropdown', 'value')
+    State('group-dropdown', 'value'),
+    State('ticker-data', 'data'),
 )
 
 # check group values with 'All' or ranking
@@ -333,35 +341,46 @@ app.clientside_callback(
 # update tickers based on selected groups and category
 app.clientside_callback(
     """
-    function(groups, category) {
+    function(groups, category, previous) {
         let tickers = [];
         if (!groups || !category || !dataCategory[category]) return tickers;
-
-        // If groups contain "All", return all tickers from the category
+    
+        // Make a shallow copy of the original group-ticker mapping
+        const localCategory = { ...dataCategory[category] };
+    
+        // Add 'Previous' group if previous is available
+        if (previous && Array.isArray(previous)) {
+            localCategory['Previous'] = previous;
+        }
+    
+        // If groups contain "All", return all tickers from the (modified) category
         if (groups.includes("All")) {
-            tickers = Object.values(dataCategory[category]).flat();
+            tickers = Object.values(localCategory).flat();
         } else {
             // Otherwise, return tickers only for the specified groups
             groups.forEach(group => {
-                if (dataCategory[category] && dataCategory[category][group]) {
-                    tickers = tickers.concat(dataCategory[category][group]);
+                if (localCategory[group]) {
+                    tickers = tickers.concat(localCategory[group]);
                 }
             });
-        };
-
-        // filter tickers depending on the order in dataRank
+        }
+    
+        // Optional filtering by ranking
         const groups_opt = groups?.filter(group => group.startsWith('#')) || [];
         if (groups_opt.length === 1) {
             const match = groups_opt[0].slice(1).match(/^([a-zA-Z]+)(\\d+)$/);
-            tickers = selectTickers(match[1], tickers, dataRank, num=match[2])
-            //tickers = selectTickers("Top", tickers, dataRank, num=10)
-        };
+            if (match) {
+                tickers = selectTickers(match[1], tickers, dataRank, num=match[2]);
+            }
+        }
+    
         return tickers;
     }
     """,
     Output('ticker-data', 'data'),
     Input('group-dropdown', 'value'),
-    State('category-dropdown', 'value')
+    State('category-dropdown', 'value'),
+    State('previous-data', 'data')
 )
 
 # save name and ticker of funds for copying
@@ -504,8 +523,8 @@ app.clientside_callback(
 
         let categories = Object.keys(data_cagr);
         let tickers = Object.entries(data_cagr[categories[1]]) // use cagr after fees for sorting
-                    .sort((a, b) => b[1] - a[1]) // sort descending by CAGR
-                    .map(entry => entry[0]);     // extract just the ticker names
+                            .sort((a, b) => b[1] - a[1]) // sort descending by CAGR
+                            .map(entry => entry[0]);     // extract just the ticker names
         
         let traces = categories.map(category => {
             return {
@@ -614,7 +633,7 @@ app.clientside_callback(
                 name: cat,  // Legend entry
                 hovertemplate: '<span style=\"font-size: 120%;\">%{customdata[0]}</span><br>' +
                                '수익률 순위(%): 평균 %{x:.0f}, 편차 %{y:.0f}<br>' +
-                               '수익률 구간: %{customdata[1]} ~ %{customdata[2]}<extra></extra>',
+                               '수익률 구간: %{customdata[1]:.1%} ~ %{customdata[2]:.1%}<extra></extra>',
             };
         });
 

@@ -92,7 +92,8 @@ window.selectTickers = function(option, tickers, data_rank, num = 10) {
             .slice(0, num);
     }
     
-    return []; // Return empty array if option is invalid
+    //return []; // Return empty array if option is invalid
+    return tickers // return all tickers without filtering
 }
 
 
