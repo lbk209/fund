@@ -274,8 +274,11 @@ app.clientside_callback(
             { label: "#Top10", value: "#Top10", title: "3년 수익률 추정 평균 기준"},
             { label: "#Bottom10", value: "#Bottom10", title: "3년 수익률 추정 평균 기준"},
             { label: "#Random10", value: "#Random10", title: "3년 수익률 추정 평균 기준"},
-            { label: "𝑷𝒓𝒆𝒗𝒊𝒐𝒖𝒔", value: "Previous", title: "이전 선택"},
         ];
+        
+        if (tickers) {
+            options = [...options, { label: "𝑷𝒓𝒆𝒗𝒊𝒐𝒖𝒔", value: "Previous", title: "이전 선택"}]
+        }
 
         // Map over groups and append them to the list
         options = options.concat(
@@ -287,7 +290,8 @@ app.clientside_callback(
         );
         // reset group values to 'All' and ranking selected before
         groups_opt = groups_opt?.filter(group => group.startsWith('#')) || [];
-        return [options, ['All', ...groups_opt], tickers];
+        const value = [tickers ? 'Previous' : 'All', ...groups_opt];
+        return [options, value, tickers];
     }
     """,
     Output('group-dropdown', 'options'),
