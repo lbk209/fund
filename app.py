@@ -32,10 +32,10 @@ category = {
 }
 
 # data to import
-dt = '250228'
+dt = '250331'
 file_prc = f'funds_monthly_{dt}.csv'
 file_cat = 'funds_categories.csv'
-file_est = 'funds_bayesian_ret3y_250228.csv'
+file_est = f'funds_bayesian_ret3y_{dt}.csv'
 path = '.'
 
 # Load data
@@ -273,6 +273,7 @@ app.clientside_callback(
             { label: "#Top10", value: "#Top10", title: "3년 수익률 추정 평균 기준"},
             { label: "#Bottom10", value: "#Bottom10", title: "3년 수익률 추정 평균 기준"},
             { label: "#Random10", value: "#Random10", title: "3년 수익률 추정 평균 기준"},
+            { label: "#Previous", value: "#Previous", title: "이전 선택"},
         ];
 
         // Map over groups and append them to the list
@@ -504,8 +505,8 @@ app.clientside_callback(
 
         let categories = Object.keys(data_cagr);
         let tickers = Object.entries(data_cagr[categories[1]]) // use cagr after fees for sorting
-                    .sort((a, b) => b[1] - a[1]) // sort descending by CAGR
-                    .map(entry => entry[0]);     // extract just the ticker names
+                            .sort((a, b) => b[1] - a[1]) // sort descending by CAGR
+                            .map(entry => entry[0]);     // extract just the ticker names
         
         let traces = categories.map(category => {
             return {
@@ -614,7 +615,7 @@ app.clientside_callback(
                 name: cat,  // Legend entry
                 hovertemplate: '<span style=\"font-size: 120%;\">%{customdata[0]}</span><br>' +
                                '수익률 순위(%): 평균 %{x:.0f}, 편차 %{y:.0f}<br>' +
-                               '수익률 구간: %{customdata[1]} ~ %{customdata[2]}<extra></extra>',
+                               '수익률 구간: %{customdata[1]:.1%} ~ %{customdata[2]:.1%}<extra></extra>',
             };
         });
 
