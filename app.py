@@ -290,8 +290,17 @@ app.clientside_callback(
             }))
         );
         // reset group values to 'All' and ranking selected before
-        groups_opt = groups_opt?.filter(group => group.startsWith('#')) || [];
-        const value = [tickers ? 'nPrevious' : 'All', ...groups_opt]; // default previous is intersection
+        if (tickers) {
+            if (groups_opt.length === 1 && groups_opt[0] === 'All') {
+                value = ['All'];
+            } else {
+                value = ['nPrevious'];
+            }
+        } else {
+            value = groups_opt?.filter(group => group.startsWith('#')) || [];
+            value = ['All', ...value];
+        }
+        
         return [options, value, tickers];
     }
     """,
@@ -372,18 +381,18 @@ app.clientside_callback(
         }
     
         // Fallback to previous tickers if none found
-        if (tickers.length === 0) {
-            return previous.length > 0 ? previous : [];
-        }
-    
-        // Modify tickers based on previous if specified
-        if (previous.length > 0) {
-            if (groups.includes("uPrevious")) {
-                tickers.push(...previous);
+        if (tickers.length > 0) {
+            // Modify tickers based on previous if specified
+            if (previous.length > 0) {
+                if (groups.includes("uPrevious")) {
+                    tickers.push(...previous);
+                }
+                if (groups.includes("nPrevious")) {
+                    tickers = tickers.filter(ticker => previous.includes(ticker));
+                }
             }
-            if (groups.includes("nPrevious")) {
-                tickers = tickers.filter(ticker => previous.includes(ticker));
-            }
+        } else {
+            tickers = previous.length > 0 ? previous : [];
         }
 
         // Optional filtering by ranking
