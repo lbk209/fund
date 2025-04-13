@@ -277,7 +277,8 @@ app.clientside_callback(
         ];
         
         if (tickers) {
-            options = [...options, { label: "𝑷𝒓𝒆𝒗𝒊𝒐𝒖𝒔", value: "Previous", title: "이전 선택"}]
+            options = [...options, { label: "∪ 𝗣𝗿𝗲𝘃𝗶𝗼𝘂𝘀", value: "uPrevious", title: "이전 선택 합해서"}]
+            options = [...options, { label: "∩ 𝗣𝗿𝗲𝘃𝗶𝗼𝘂𝘀", value: "nPrevious", title: "이전 선택 중에서"}]
         }
 
         // Map over groups and append them to the list
@@ -290,7 +291,7 @@ app.clientside_callback(
         );
         // reset group values to 'All' and ranking selected before
         groups_opt = groups_opt?.filter(group => group.startsWith('#')) || [];
-        const value = [tickers ? 'Previous' : 'All', ...groups_opt];
+        const value = [tickers ? 'nPrevious' : 'All', ...groups_opt]; // default previous is intersection
         return [options, value, tickers];
     }
     """,
@@ -316,8 +317,20 @@ app.clientside_callback(
             return acc;
         }, { groups_m: [], group_opt: null });
 
-        //console.log(groups_m)
-        //console.log(group_opt)
+        // Find the last index of any "*Previous"
+        const kinds = ['uPrevious', 'nPrevious'];
+        let lastIndex = -1;
+        for (let i = groups_m.length - 1; i >= 0; i--) {
+            if (kinds.includes(groups_m[i])) {
+                lastIndex = i;
+                break;
+            }
+        }
+        // Filter to keep only the last kind (if any)
+        groups_m = groups_m.filter((item, index) => {
+            if (!kinds.includes(item)) return true;
+            return index === lastIndex;
+        });
 
         // Check if 'All' is the last element
         if (groups_m.length === 0 || groups_m[groups_m.length - 1] === 'All') {
@@ -341,30 +354,38 @@ app.clientside_callback(
 # update tickers based on selected groups and category
 app.clientside_callback(
     """
-    function(groups, category, previous) {
+    function(groups, category, previous = []) {
         let tickers = [];
-        if (!groups || !category || !dataCategory[category]) return tickers;
+        const localCategory = dataCategory[category];
+        if (!groups || !category || !localCategory) return [];
     
-        // Make a shallow copy of the original group-ticker mapping
-        const localCategory = { ...dataCategory[category] };
-    
-        // Add 'Previous' group if previous is available
-        if (previous && Array.isArray(previous)) {
-            localCategory['Previous'] = previous;
-        }
-    
-        // If groups contain "All", return all tickers from the (modified) category
+        // If "All" is selected, return all tickers in the category
         if (groups.includes("All")) {
             tickers = Object.values(localCategory).flat();
         } else {
-            // Otherwise, return tickers only for the specified groups
-            groups.forEach(group => {
+            // Add tickers from selected groups
+            for (const group of groups) {
                 if (localCategory[group]) {
-                    tickers = tickers.concat(localCategory[group]);
+                    tickers.push(...localCategory[group]);
                 }
-            });
+            }
         }
     
+        // Fallback to previous tickers if none found
+        if (tickers.length === 0) {
+            return previous.length > 0 ? previous : [];
+        }
+    
+        // Modify tickers based on previous if specified
+        if (previous.length > 0) {
+            if (groups.includes("uPrevious")) {
+                tickers.push(...previous);
+            }
+            if (groups.includes("nPrevious")) {
+                tickers = tickers.filter(ticker => previous.includes(ticker));
+            }
+        }
+
         // Optional filtering by ranking
         const groups_opt = groups?.filter(group => group.startsWith('#')) || [];
         if (groups_opt.length === 1) {
