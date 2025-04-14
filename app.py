@@ -277,8 +277,8 @@ app.clientside_callback(
         ];
         
         if (tickers) {
-            options = [...options, { label: "∪ 𝗣𝗿𝗲𝘃𝗶𝗼𝘂𝘀", value: "uPrevious", title: "이전 선택 합해서"}]
-            options = [...options, { label: "∩ 𝗣𝗿𝗲𝘃𝗶𝗼𝘂𝘀", value: "nPrevious", title: "이전 선택 중에서"}]
+            options = [...options, { label: "Combined with 𝗣𝗿𝗲𝘃𝗶𝗼𝘂𝘀", value: "uPrevious", title: "이전 선택과 함께"}]
+            options = [...options, { label: "Overlap with 𝗣𝗿𝗲𝘃𝗶𝗼𝘂𝘀", value: "nPrevious", title: "이전 선택 중에서"}]
         }
 
         // Map over groups and append them to the list
@@ -509,6 +509,7 @@ app.clientside_callback(
                 },
                 type: "date"
             },
+            //height: 500,
         }
 
         // Adjust legend position for mobile devices
