@@ -192,7 +192,17 @@ app.layout = dbc.Container([
                 options=category_options,
                 value=category_default,
                 clearable=False,
-            ), style={'min-width':'15%'}
+            ), style={'min-width':'10%'}
+        ),
+        html.Div(
+            dcc.Input(
+                id='name-input', 
+                type='text',
+                placeholder='펀드명 입력',
+                disabled=True,
+                size='12',
+                className='custom-input'
+            ), style={'min-width':'10%'}
         ),
         html.Div(
             dcc.Dropdown(
@@ -200,7 +210,12 @@ app.layout = dbc.Container([
                 #options=groups,
                 value=group_default,
                 multi=True,
-            ), style={'min-width':'55%', 'max-width':'100%'}
+            ), style={
+                'min-width':'55%', 
+                'max-width':'55%',
+                #'overflow': 'hidden',      # ✅ hide overflow
+                'textOverflow': 'ellipsis',# ✅ trim long text
+            }
         ),
         daq.BooleanSwitch(
             id='compare-boolean-switch',
@@ -359,6 +374,55 @@ app.clientside_callback(
     Input('group-dropdown', 'value'),
     prevent_initial_call=True
 )
+
+# turn on name-input only if category is name
+app.clientside_callback(
+    """
+    function(category) {
+        return category !== "name";
+    }
+    """,
+    Output('name-input', 'disabled'),
+    Input('category-dropdown', 'value'),
+)
+
+# multiple selection for name category
+app.clientside_callback(
+    """
+    function(pattern, category, groups) {
+        // Return current groups if pattern is empty or category isn't 'name'
+        if (!pattern || category !== "name") {
+            return groups;
+        }
+
+        // Get options from dataCategory based on category
+        const obj = dataCategory[category];
+        const options = Object.keys(obj);
+
+        try {
+            // Escape special characters and convert * to .*
+            const escaped = pattern
+                .replace(/[.+?^${}()|[\\]\\\\]/g, '\\\\$&')
+                .replace(/\\*/g, '.*');
+            const regex = new RegExp('.*' + escaped + '.*', 'i');
+
+            // Filter and return up to 20 matching values
+            return options
+                .filter(opt => regex.test(opt))
+                .slice(0, 20);
+        } catch (e) {
+            console.error("Regex error:", e);
+            return groups;
+        }
+    }
+    """,
+    Output('group-dropdown', 'value', allow_duplicate=True),
+    Input('name-input', 'value'),
+    State('category-dropdown', 'value'),
+    State('group-dropdown', 'value'),
+    prevent_initial_call=True
+)
+
 
 # update tickers based on selected groups and category
 app.clientside_callback(
