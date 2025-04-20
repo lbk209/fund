@@ -375,14 +375,18 @@ app.clientside_callback(
     prevent_initial_call=True
 )
 
-# turn on name-input only if category is name
+# Enable name-input only if category is "name"
 app.clientside_callback(
     """
     function(category) {
-        return category !== "name";
+        const isDisabled = category !== "name";
+        const placeholder = isDisabled ? null : "펀드명 입력";
+        return [isDisabled, placeholder, ""];
     }
     """,
     Output('name-input', 'disabled'),
+    Output('name-input', 'placeholder'),
+    Output('name-input', 'value'),
     Input('category-dropdown', 'value'),
 )
 
