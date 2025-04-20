@@ -375,6 +375,7 @@ app.clientside_callback(
     prevent_initial_call=True
 )
 
+
 # Enable name-input only if category is "name"
 app.clientside_callback(
     """
@@ -427,7 +428,6 @@ app.clientside_callback(
     prevent_initial_call=True
 )
 
-
 # update tickers based on selected groups and category
 app.clientside_callback(
     """
@@ -464,14 +464,15 @@ app.clientside_callback(
         }
 
         // Optional filtering by ranking
-        const groups_opt = groups?.filter(group => group.startsWith('#')) || [];
-        if (groups_opt.length === 1) {
-            const match = groups_opt[0].slice(1).match(/^([a-zA-Z]+)(\\d+)$/);
-            if (match) {
-                tickers = selectTickers(match[1], tickers, dataRank, num=match[2]);
+        if (tickers) {
+            const groups_opt = groups?.filter(group => group.startsWith('#')) || [];
+            if (groups_opt.length === 1) {
+                const match = groups_opt[0].slice(1).match(/^([a-zA-Z]+)(\\d+)$/);
+                if (match) {
+                    tickers = selectTickers(match[1], tickers, dataRank, match[2]);
+                }
             }
         }
-    
         return tickers;
     }
     """,
@@ -485,6 +486,9 @@ app.clientside_callback(
 app.clientside_callback(
     """
     function(tickers) {
+        if (!Array.isArray(tickers)) {
+            return '';
+        }
         let result = Object.entries(dataName)
                      .filter(([k, v]) => tickers.includes(k)) // check if k is in tickers
                      .map(([k, v]) => `${k}: ${v}`);
@@ -499,7 +503,9 @@ app.clientside_callback(
 app.clientside_callback(
     """
     function(tickers) {
-        if (!tickers || tickers.length === 0) return {};
+        if (!Array.isArray(tickers)) {
+            return {};
+        }
         
         let data_prc_tkr = {};
         for (let fee in dataPrice) {
@@ -667,7 +673,9 @@ app.clientside_callback(
 app.clientside_callback(
     """
     function(tickers) {
-        if (!tickers || tickers.length === 0) return {};
+        if (!Array.isArray(tickers)) {
+            return {};
+        }
 
         const filteredData = {};
         for (const key in dataScatter) {
