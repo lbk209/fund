@@ -375,6 +375,7 @@ app.clientside_callback(
     prevent_initial_call=True
 )
 
+
 # Enable name-input only if category is "name"
 app.clientside_callback(
     """
