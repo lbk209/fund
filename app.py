@@ -330,9 +330,9 @@ app.clientside_callback(
 # check group values with 'All' or ranking
 app.clientside_callback(
     """
-    function(groups) {
+    function(groups, options, category) {
 
-        console.log('test2: groups', groups)
+        //console.log('test2: groups', groups)
         
         // Split groups into `groups_m` (regular) and `groups_opt` (optional value)
         let { groups_m, group_opt } = (groups || []).reduce((acc, group) => {
@@ -345,36 +345,57 @@ app.clientside_callback(
         }, { groups_m: [], group_opt: null });
 
         // Find the last index of any "*Previous"
-        const kinds = ['uPrevious', 'nPrevious'];
+        const previous = ['uPrevious', 'nPrevious'];
         let lastIndex = -1;
         for (let i = groups_m.length - 1; i >= 0; i--) {
-            if (kinds.includes(groups_m[i])) {
+            if (previous.includes(groups_m[i])) {
                 lastIndex = i;
                 break;
             }
         }
         // Filter to keep only the last kind (if any)
         groups_m = groups_m.filter((item, index) => {
-            if (!kinds.includes(item)) return true;
+            if (!previous.includes(item)) return true;
             return index === lastIndex;
         });
 
         // Check if 'All' is the last element
         if (groups_m.length === 0 || groups_m[groups_m.length - 1] === 'All') {
-            return ['All', group_opt].filter(Boolean); // Remove null values
+            let result = ['All', group_opt].filter(Boolean); // Remove null values
+            return [result, options, []];
         };
     
         // If 'All' is in the array but not the last element, return without 'All'
         if (groups_m.includes('All')) {
-            return groups_m.filter(group => group !== 'All').concat(group_opt).filter(Boolean);
+            groups_m = groups_m.filter(group => group !== 'All');
         };
+
+        if (category === 'name') {
+            additional = groups_m.filter(group => !groups_m.includes(previous));
+        	const count = additional.length;
+            if (count > 0) {
+                const nselected = count + ' funds selected'
+                groups_m = [...groups_m.filter(group => groups_m.includes(previous)), nselected]
+                // remove old nselected
+                options = options.filter(obj => !/^\\d+ funds selected$/.test(obj.value));
+                // add new nselected
+                options = [...options, {'label':nselected, 'value':nselected}];
+            }
+        } else {
+            additional = [];
+        }
         
-        // Otherwise, return the array with new rank option
-        return groups_m.concat(group_opt).filter(Boolean);
+        // return the array with new rank option
+        let result = groups_m.concat(group_opt).filter(Boolean);
+        return [result, options, additional];
     }
     """,
     Output('group-dropdown', 'value', allow_duplicate=True),
+    Output('group-dropdown', 'options', allow_duplicate=True),
+    Output('additional-data', 'data'),
     Input('group-dropdown', 'value'),
+    State('group-dropdown', 'options'),
+    State('category-dropdown', 'value'),
     prevent_initial_call=True
 )
 
@@ -397,10 +418,10 @@ app.clientside_callback(
 # multiple selection for name category
 app.clientside_callback(
     """
-    function(pattern, category, groups, options) {
+    function(pattern, category, groups) {
         // Return current groups if pattern is empty or category isn't 'name'
         if (!pattern || category !== "name") {
-            return [groups, options, []];
+            return groups;
         }
         
         // Get all the fund names
@@ -415,30 +436,19 @@ app.clientside_callback(
             const regex = new RegExp('.*' + escaped + '.*', 'i');
 
             // Filter and return up to 20 matching values
-            names = names
+            return names
                 .filter(opt => regex.test(opt));
                 //.slice(0, 20);
         } catch (e) {
             console.error("Regex error:", e);
-            return [groups, options, []];
+            return groups;
         }
-
-        // filter out existing N funds selection in options
-        options = options.filter(obj => !/^\\d+ funds selected$/.test(obj.value));
-        // create new N funds selection
-        value = names.length + ' funds selected';
-        options = [...options, {'label':value, 'value':value}]
-
-        return [[value], options, names];
     }
     """,
     Output('group-dropdown', 'value', allow_duplicate=True),
-    Output('group-dropdown', 'options', allow_duplicate=True),
-    Output('additional-data', 'data'),
     Input('name-input', 'value'),
     State('category-dropdown', 'value'),
     State('group-dropdown', 'value'),
-    State('group-dropdown', 'options'),
     prevent_initial_call=True
 )
 
@@ -450,8 +460,8 @@ app.clientside_callback(
         const localCategory = dataCategory[category];
         if (!groups || !category || !localCategory) return [];
 
-        console.log('test1: groups', groups)
-        console.log('test1: additional', additional)
+        //console.log('test1: groups', groups)
+        //console.log('test1: additional', additional)
         
         const index = groups.findIndex(item => /^\\d+ funds selected$/.test(item));
         if (index !== -1) {
