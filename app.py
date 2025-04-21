@@ -268,7 +268,7 @@ app.layout = dbc.Container([
     ),
     dcc.Store(id='ticker-data'),
     dcc.Store(id='previous-data'),
-    dcc.Store(id='additional-data'),
+    dcc.Store(id='fund-data'),
     dcc.Store(id='price-data'),
     dcc.Store(id='scatter-data'),
     dcc.Location(id="url", refresh=False),  # To initialize the page
@@ -330,10 +330,7 @@ app.clientside_callback(
 # check group values with 'All' or ranking
 app.clientside_callback(
     """
-    function(groups) {
-
-        console.log('test2: groups', groups)
-        
+    function(groups, options, category, funds) {
         // Split groups into `groups_m` (regular) and `groups_opt` (optional value)
         let { groups_m, group_opt } = (groups || []).reduce((acc, group) => {
             if (group.startsWith("#")) {
@@ -345,36 +342,68 @@ app.clientside_callback(
         }, { groups_m: [], group_opt: null });
 
         // Find the last index of any "*Previous"
-        const kinds = ['uPrevious', 'nPrevious'];
+        const previous = ['uPrevious', 'nPrevious'];
         let lastIndex = -1;
         for (let i = groups_m.length - 1; i >= 0; i--) {
-            if (kinds.includes(groups_m[i])) {
+            if (previous.includes(groups_m[i])) {
                 lastIndex = i;
                 break;
             }
         }
         // Filter to keep only the last kind (if any)
         groups_m = groups_m.filter((item, index) => {
-            if (!kinds.includes(item)) return true;
+            if (!previous.includes(item)) return true;
             return index === lastIndex;
         });
 
         // Check if 'All' is the last element
         if (groups_m.length === 0 || groups_m[groups_m.length - 1] === 'All') {
-            return ['All', group_opt].filter(Boolean); // Remove null values
+            let result = ['All', group_opt].filter(Boolean); // Remove null values
+            return [result, options, []];
         };
     
         // If 'All' is in the array but not the last element, return without 'All'
         if (groups_m.includes('All')) {
-            return groups_m.filter(group => group !== 'All').concat(group_opt).filter(Boolean);
+            groups_m = groups_m.filter(group => group !== 'All');
         };
         
-        // Otherwise, return the array with new rank option
-        return groups_m.concat(group_opt).filter(Boolean);
+        // replace fund names by 'N funds selected'
+        if (category === 'name') {
+            funds = (funds || []);
+            // nselected can have 'N funds selected' and additional fund names after removing *previous
+            nselected = groups_m.filter(group => !previous.includes(group));
+            if (nselected.some(group => /^\\d+ funds selected$/.test(group))) {
+                additional = nselected.filter(group => !/^\\d+ funds selected$/.test(group));
+                if (additional.length > 0) {
+                    funds = funds.concat(additional);
+                }
+            } else { // no 'N funds selected' exists
+                if (nselected.length > 0) {
+                    funds = nselected; // replace funds with new selection
+                }                
+            }
+            if (funds.length > 0) {
+                const value = funds.length + ' funds selected';
+                groups_m = [...groups_m.filter(group => previous.includes(group)), value];
+                // remove old nselected option
+                options = options.filter(obj => !/^\\d+ funds selected$/.test(obj.value));
+                // add new nselected option
+                options = [...options, {'label':value, 'value':value}]; 
+            }
+        }
+       
+        // return the array with new rank option
+        let result = groups_m.concat(group_opt).filter(Boolean);
+        return [result, options, funds];
     }
     """,
     Output('group-dropdown', 'value', allow_duplicate=True),
+    Output('group-dropdown', 'options', allow_duplicate=True),
+    Output('fund-data', 'data', allow_duplicate=True),
     Input('group-dropdown', 'value'),
+    State('group-dropdown', 'options'),
+    State('category-dropdown', 'value'),
+    State('fund-data', 'data'),
     prevent_initial_call=True
 )
 
@@ -397,10 +426,10 @@ app.clientside_callback(
 # multiple selection for name category
 app.clientside_callback(
     """
-    function(pattern, category, groups, options) {
+    function(pattern, category, groups) {
         // Return current groups if pattern is empty or category isn't 'name'
         if (!pattern || category !== "name") {
-            return [groups, options, []];
+            return [groups, []];
         }
         
         // Get all the fund names
@@ -414,57 +443,46 @@ app.clientside_callback(
                 .replace(/\\*/g, '.*');
             const regex = new RegExp('.*' + escaped + '.*', 'i');
 
-            // Filter and return up to 20 matching values
-            names = names
-                .filter(opt => regex.test(opt));
-                //.slice(0, 20);
+            // Filter and return matching values
+            let filtered = names.filter(opt => regex.test(opt));
+            return [filtered, filtered];
         } catch (e) {
             console.error("Regex error:", e);
-            return [groups, options, []];
+            return [groups, []];
         }
-
-        // filter out existing N funds selection in options
-        options = options.filter(obj => !/^\\d+ funds selected$/.test(obj.value));
-        // create new N funds selection
-        value = names.length + ' funds selected';
-        options = [...options, {'label':value, 'value':value}]
-
-        return [[value], options, names];
     }
     """,
     Output('group-dropdown', 'value', allow_duplicate=True),
-    Output('group-dropdown', 'options', allow_duplicate=True),
-    Output('additional-data', 'data'),
+    Output('fund-data', 'data'),
     Input('name-input', 'value'),
     State('category-dropdown', 'value'),
     State('group-dropdown', 'value'),
-    State('group-dropdown', 'options'),
     prevent_initial_call=True
 )
 
 # update tickers based on selected groups and category
 app.clientside_callback(
     """
-    function(groups, category, previous, additional) {
+    function(groups, category, previous, funds) {
         let tickers = [];
         const localCategory = dataCategory[category];
         if (!groups || !category || !localCategory) return [];
 
-        console.log('test1: groups', groups)
-        console.log('test1: additional', additional)
-        
-        const index = groups.findIndex(item => /^\\d+ funds selected$/.test(item));
+        let localgroups = [...groups];
+
+        // retrieve fund names to get tickers
+        const index = localgroups.findIndex(item => /^\\d+ funds selected$/.test(item));
         if (index !== -1) {
-            //.splice() modifies the original array and returns the removed elements, not the updated array
-            groups.splice(index, 1, ...additional);
+            // splice() modifies the original array and returns the removed elements, not the updated array
+            localgroups.splice(index, 1, ...funds);
         }
 
         // If "All" is selected, return all tickers in the category
-        if (groups.includes("All")) {
+        if (localgroups.includes("All")) {
             tickers = Object.values(localCategory).flat();
         } else {
             // Add tickers from selected groups
-            for (const group of groups) {
+            for (const group of localgroups) {
                 if (localCategory[group]) {
                     tickers.push(...localCategory[group]);
                 }
@@ -475,10 +493,10 @@ app.clientside_callback(
         if (tickers.length > 0) {
             // Modify tickers based on previous if specified
             if (previous && previous.length > 0) {
-                if (groups.includes("uPrevious")) {
+                if (localgroups.includes("uPrevious")) {
                     tickers.push(...previous);
                 }
-                if (groups.includes("nPrevious")) {
+                if (localgroups.includes("nPrevious")) {
                     tickers = tickers.filter(ticker => previous.includes(ticker));
                 }
             }
@@ -488,7 +506,7 @@ app.clientside_callback(
 
         // Optional filtering by ranking
         if (tickers) {
-            const groups_opt = groups?.filter(group => group.startsWith('#')) || [];
+            const groups_opt = localgroups?.filter(group => group.startsWith('#')) || [];
             if (groups_opt.length === 1) {
                 const match = groups_opt[0].slice(1).match(/^([a-zA-Z]+)(\\d+)$/);
                 if (match) {
@@ -503,7 +521,7 @@ app.clientside_callback(
     Input('group-dropdown', 'value'),
     State('category-dropdown', 'value'),
     State('previous-data', 'data'),
-    State('additional-data', 'data')
+    State('fund-data', 'data')
 )
 
 # save name and ticker of funds for copying
@@ -642,7 +660,6 @@ app.clientside_callback(
                 df = normalizePrice(df, 1000);
                 let tickers = Object.keys(df);
                 var dates = Object.keys(df[tickers[0]]);
-                console.log(dates)
             };
             data_cagr[fee] = {};
             for (let tkr in df) {
