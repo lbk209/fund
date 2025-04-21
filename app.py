@@ -176,7 +176,7 @@ tabs_contents = [
     dbc.Tab(dcc.Graph(id='price-plot'), label='가격'),
     dbc.Tab(dcc.Graph(id='cagr-plot'), label='수익률', tab_id='tab_cagr'),
     dbc.Tab(dcc.Graph(id='scatter-plot'), label='순위', tab_id='tab_scatter'),
-    dbc.Tab(tab_notice, label='알림',
+    dbc.Tab(tab_notice, label='알림', tab_id='tab_notice',
             label_class_name="tab-label new-badge-label"),
     dbc.Tab(tab_info, label='정보', tab_id='tab_info')
 ]
@@ -268,7 +268,7 @@ app.layout = dbc.Container([
     ),
     dcc.Store(id='ticker-data'),
     dcc.Store(id='previous-data'),
-    dcc.Store(id='name-data'),
+    dcc.Store(id='additional-data'),
     dcc.Store(id='price-data'),
     dcc.Store(id='scatter-data'),
     dcc.Location(id="url", refresh=False),  # To initialize the page
@@ -330,8 +330,11 @@ app.clientside_callback(
 # check group values with 'All' or ranking
 app.clientside_callback(
     """
-    function processGroups(groups) {
-        // Split groups into `groups_m` (regular) and `groups_opt` (options)
+    function(groups) {
+
+        console.log('test2: groups', groups)
+        
+        // Split groups into `groups_m` (regular) and `groups_opt` (optional value)
         let { groups_m, group_opt } = (groups || []).reduce((acc, group) => {
             if (group.startsWith("#")) {
                 acc.group_opt = group; // Keep only the latest rank option
@@ -394,15 +397,15 @@ app.clientside_callback(
 # multiple selection for name category
 app.clientside_callback(
     """
-    function(pattern, category, groups) {
+    function(pattern, category, groups, options) {
         // Return current groups if pattern is empty or category isn't 'name'
         if (!pattern || category !== "name") {
-            return groups;
+            return [groups, options, []];
         }
-
-        // Get options from dataCategory based on category
+        
+        // Get all the fund names
         const obj = dataCategory[category];
-        const options = Object.keys(obj);
+        let names = Object.keys(obj);
 
         try {
             // Escape special characters and convert * to .*
@@ -412,30 +415,50 @@ app.clientside_callback(
             const regex = new RegExp('.*' + escaped + '.*', 'i');
 
             // Filter and return up to 20 matching values
-            return options
-                .filter(opt => regex.test(opt))
-                .slice(0, 20);
+            names = names
+                .filter(opt => regex.test(opt));
+                //.slice(0, 20);
         } catch (e) {
             console.error("Regex error:", e);
-            return groups;
+            return [groups, options, []];
         }
+
+        // filter out existing N funds selection in options
+        options = options.filter(obj => !/^\\d+ funds selected$/.test(obj.value));
+        // create new N funds selection
+        value = names.length + ' funds selected';
+        options = [...options, {'label':value, 'value':value}]
+
+        return [[value], options, names];
     }
     """,
     Output('group-dropdown', 'value', allow_duplicate=True),
+    Output('group-dropdown', 'options', allow_duplicate=True),
+    Output('additional-data', 'data'),
     Input('name-input', 'value'),
     State('category-dropdown', 'value'),
     State('group-dropdown', 'value'),
+    State('group-dropdown', 'options'),
     prevent_initial_call=True
 )
 
 # update tickers based on selected groups and category
 app.clientside_callback(
     """
-    function(groups, category, previous = []) {
+    function(groups, category, previous, additional) {
         let tickers = [];
         const localCategory = dataCategory[category];
         if (!groups || !category || !localCategory) return [];
-    
+
+        console.log('test1: groups', groups)
+        console.log('test1: additional', additional)
+        
+        const index = groups.findIndex(item => /^\\d+ funds selected$/.test(item));
+        if (index !== -1) {
+            //.splice() modifies the original array and returns the removed elements, not the updated array
+            groups.splice(index, 1, ...additional);
+        }
+
         // If "All" is selected, return all tickers in the category
         if (groups.includes("All")) {
             tickers = Object.values(localCategory).flat();
@@ -451,7 +474,7 @@ app.clientside_callback(
         // Fallback to previous tickers if none found
         if (tickers.length > 0) {
             // Modify tickers based on previous if specified
-            if (previous.length > 0) {
+            if (previous && previous.length > 0) {
                 if (groups.includes("uPrevious")) {
                     tickers.push(...previous);
                 }
@@ -479,7 +502,8 @@ app.clientside_callback(
     Output('ticker-data', 'data'),
     Input('group-dropdown', 'value'),
     State('category-dropdown', 'value'),
-    State('previous-data', 'data')
+    State('previous-data', 'data'),
+    State('additional-data', 'data')
 )
 
 # save name and ticker of funds for copying
@@ -797,7 +821,7 @@ app.clientside_callback(
     function(tab, cost, compare) {
         if (tab === "tab_scatter") {
             return [true, false, true, true];
-        } else if (tab === "tab_info") {
+        } else if (tab === "tab_info" || tab === "tab_notice" ) {
             return [cost, compare, true, true];
         } else if (tab === "tab_cagr") {
             return [true, compare, true, false];
@@ -815,7 +839,7 @@ app.clientside_callback(
 app.clientside_callback(
     """
     function(tab, category, group) {
-        if (tab === "tab_info") {
+        if (tab === "tab_info" || tab === "tab_notice" ) {
             return [true, true];
         } else {
             return [false, false];
