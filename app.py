@@ -268,7 +268,8 @@ app.layout = dbc.Container([
     ),
     dcc.Store(id='ticker-data'),
     dcc.Store(id='previous-data'),
-    dcc.Store(id='name-data'),
+    dcc.Store(id='filter-data'),
+    dcc.Store(id='options-data'),
     dcc.Store(id='price-data'),
     dcc.Store(id='scatter-data'),
     dcc.Location(id="url", refresh=False),  # To initialize the page
@@ -316,12 +317,13 @@ app.clientside_callback(
             value = ['All', ...value];
         }
         
-        return [options, value, tickers];
+        return [options, value, tickers, options];
     }
     """,
     Output('group-dropdown', 'options'),
     Output('group-dropdown', 'value'),
     Output('previous-data', 'data'),
+    Output('options-data', 'data'), # save for name filter
     Input('category-dropdown', 'value'),
     State('group-dropdown', 'value'),
     State('ticker-data', 'data'),
@@ -330,8 +332,7 @@ app.clientside_callback(
 # Process group values such as 'All', previous, ranking and N funds selected
 app.clientside_callback(
     """
-    function(groups, options, category, names) {
-        console.log('options.length', options.length)
+    function(groups, options, category, names, allnames) {
         // Split groups into `groups_m` (regular) and `groups_opt` (optional value)
         let { groups_m, group_opt } = (groups || []).reduce((acc, group) => {
             if (group.startsWith("#")) {
@@ -372,13 +373,19 @@ app.clientside_callback(
         let newnames = [];
         let localoptions = [...options];
         if (category === 'name') {
+            // option value for 'N funds selected'
             const selectedPattern = /^\\d+ funds selected$/;
-            // nselected can have 'N funds selected' and additional fund names after removing *previous
+            
+            // array of option value 'nselected' can have 'N funds selected' and additional fund names after removing *previous
             const nselected = groups_m.filter(group => !previous.includes(group));
-            let localnames = names.map(item => item.value);
+            
+            // refresh 'N funds selected' with additional funds names
+            let localnames = names.map(item => item.value); // new funds being added to 'N funds selected'
+
+            // update fund names for new 'N funds selected'
             if (nselected.some(group => selectedPattern.test(group))) {
                 additional = nselected.filter(group => !selectedPattern.test(group));
-                if (additional.length > 0) {
+                if (additional.length > 0) { // add additional to existing
                     localnames = localnames.concat(additional);
                 }
             } else { // no 'N funds selected' exists
@@ -388,26 +395,18 @@ app.clientside_callback(
             }
             
             if (localnames.length > 0) {
-                const value = localnames.length + ' funds selected';
                 // set new group values
+                const value = localnames.length + ' funds selected';
                 groups_m = [...groups_m.filter(group => previous.includes(group)), value];
-                
-                // restore full options before updating options
-                const merged = [...localoptions, ...(names || [])];
-                localoptions = Array.from(new Map(merged.map(item => [item.value, item])).values());
 
-                console.log('localoptions.length', localoptions.length);
-                console.log('localnames', localnames);
-                newnames = localoptions.filter(obj => localnames.includes(obj.value)); // update options replaced by value
-                console.log('newnames.length', newnames.length);
+                // set options for localnames from full fund name options
+                newnames = allnames.filter(obj => localnames.includes(obj.value));
                 
-                // remove old nselected option and names replaced by the value
-                localoptions = localoptions.filter(obj => !selectedPattern.test(obj.value) && !localnames.includes(obj.value));
-                // add new nselected option
+                // set new options
+                localoptions = allnames.filter(obj => !localnames.includes(obj.value));
                 localoptions = [...localoptions, {'label':value, 'value':value}];
             }
         }
-        //console.log('newnames', newnames);
         // return the array with new rank option
         let result = groups_m.concat(group_opt).filter(Boolean);
         return [result, localoptions, newnames];
@@ -415,11 +414,12 @@ app.clientside_callback(
     """,
     Output('group-dropdown', 'value', allow_duplicate=True),
     Output('group-dropdown', 'options', allow_duplicate=True),
-    Output('name-data', 'data', allow_duplicate=True),
+    Output('filter-data', 'data', allow_duplicate=True),
     Input('group-dropdown', 'value'),
     State('group-dropdown', 'options'),
     State('category-dropdown', 'value'),
-    State('name-data', 'data'),
+    State('filter-data', 'data'),
+    State('options-data', 'data'),
     prevent_initial_call=True
 )
 
@@ -436,7 +436,7 @@ app.clientside_callback(
     Output('name-input', 'disabled'),
     Output('name-input', 'placeholder'),
     Output('name-input', 'value'),
-    Input('category-dropdown', 'value'),
+    Input('category-dropdown', 'value')
 )
 
 # multiple selection for name category
@@ -469,7 +469,7 @@ app.clientside_callback(
     }
     """,
     Output('group-dropdown', 'value', allow_duplicate=True),
-    Output('name-data', 'data'),
+    Output('filter-data', 'data'),
     Input('name-input', 'value'),
     State('category-dropdown', 'value'),
     State('group-dropdown', 'value'),
@@ -538,7 +538,7 @@ app.clientside_callback(
     Input('group-dropdown', 'value'),
     State('category-dropdown', 'value'),
     State('previous-data', 'data'),
-    State('name-data', 'data')
+    State('filter-data', 'data')
 )
 
 # save name and ticker of funds for copying
