@@ -34,17 +34,3 @@
     padding-right: 0.5rem;
     padding-left: 0.5rem;
 }
-
-.custom-input {
-    /* height: 30px, */
-    line-height: 32px;
-    /* padding: 0 8px; */
-    /* fontSize: 14px;*/
-    border: 1px solid #ced4da;
-    border-radius: 4px;
-    /* width: 100%;*/
-    boxSizing: border-box;
-    appearance: none;         /* ⬅️ this helps with Safari */
-    -webkit-appearance: none; /* ⬅️ this helps with Chrome */
-    -moz-appearance: none;    /* ⬅️ this helps with Firefox */
-}
