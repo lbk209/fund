@@ -93,8 +93,9 @@ group_default = ['All', '#Top10']
 label = '이거어때?'
 desc = '3년수익률 추정 평균/편차 순위 모두 상위권 펀드'
 tickers = ['K55364CF7048', 'KR5235AK9808']
-_ = [data_cat[x].update({label:tickers}) for x in data_cat.keys()]
-data_title = {label: desc} # define option title other than label for group options
+#_ = [data_cat[x].update({label:tickers}) for x in data_cat.keys()]
+#data_title = {label: desc} # define option title other than label for group options
+data_title = {}
 
 
 # convert data to json
@@ -198,7 +199,6 @@ app.layout = dbc.Container([
             dcc.Input(
                 id='name-input', 
                 type='text',
-                placeholder='펀드명 입력',
                 disabled=True,
                 size='12',
                 className='custom-input'
@@ -268,7 +268,7 @@ app.layout = dbc.Container([
     ),
     dcc.Store(id='ticker-data'),
     dcc.Store(id='previous-data'),
-    dcc.Store(id='fund-data'),
+    dcc.Store(id='name-data'),
     dcc.Store(id='price-data'),
     dcc.Store(id='scatter-data'),
     dcc.Location(id="url", refresh=False),  # To initialize the page
@@ -327,10 +327,10 @@ app.clientside_callback(
     State('ticker-data', 'data'),
 )
 
-# check group values with 'All' or ranking
+# Process group values such as 'All', previous, ranking and N funds selected
 app.clientside_callback(
     """
-    function(groups, options, category, funds) {
+    function(groups, options, category, names) {
         // Split groups into `groups_m` (regular) and `groups_opt` (optional value)
         let { groups_m, group_opt } = (groups || []).reduce((acc, group) => {
             if (group.startsWith("#")) {
@@ -368,42 +368,54 @@ app.clientside_callback(
         };
         
         // replace fund names by 'N funds selected'
+        let newnames = [];
         if (category === 'name') {
-            funds = (funds || []);
+            console.log('test1:', names.map(item => item.value));
+            const selectedPattern = /^\\d+ funds selected$/;
             // nselected can have 'N funds selected' and additional fund names after removing *previous
-            nselected = groups_m.filter(group => !previous.includes(group));
-            if (nselected.some(group => /^\\d+ funds selected$/.test(group))) {
-                additional = nselected.filter(group => !/^\\d+ funds selected$/.test(group));
+            const nselected = groups_m.filter(group => !previous.includes(group));
+            let localnames = names.map(item => item.value);
+            if (nselected.some(group => selectedPattern.test(group))) {
+                additional = nselected.filter(group => !selectedPattern.test(group));
                 if (additional.length > 0) {
-                    funds = funds.concat(additional);
+                    localnames = localnames.concat(additional);
                 }
             } else { // no 'N funds selected' exists
                 if (nselected.length > 0) {
-                    funds = nselected; // replace funds with new selection
+                    localnames = nselected; // replace names with new selection
                 }                
             }
-            if (funds.length > 0) {
-                const value = funds.length + ' funds selected';
+            console.log('test2:', localnames);
+            if (localnames.length > 0) {
+                const value = localnames.length + ' funds selected';
+                // set new group values
                 groups_m = [...groups_m.filter(group => previous.includes(group)), value];
-                // remove old nselected option
-                options = options.filter(obj => !/^\\d+ funds selected$/.test(obj.value));
+                
+                // restore full options before updating options
+                const merged = [...options, ...(names || [])];
+                options = Array.from(new Map(merged.map(item => [item.value, item])).values());
+                
+                newnames = options.filter(obj => localnames.includes(obj.value)); // update options replaced by value
+                console.log('test3:', newnames.map(item => item.value));
+                // remove old nselected option and names replaced by the value
+                options = options.filter(obj => !selectedPattern.test(obj.value) && !localnames.includes(obj.value));
                 // add new nselected option
-                options = [...options, {'label':value, 'value':value}]; 
+                options = [...options, {'label':value, 'value':value}];
             }
         }
        
         // return the array with new rank option
         let result = groups_m.concat(group_opt).filter(Boolean);
-        return [result, options, funds];
+        return [result, options, newnames];
     }
     """,
     Output('group-dropdown', 'value', allow_duplicate=True),
     Output('group-dropdown', 'options', allow_duplicate=True),
-    Output('fund-data', 'data', allow_duplicate=True),
+    Output('name-data', 'data', allow_duplicate=True),
     Input('group-dropdown', 'value'),
     State('group-dropdown', 'options'),
     State('category-dropdown', 'value'),
-    State('fund-data', 'data'),
+    State('name-data', 'data'),
     prevent_initial_call=True
 )
 
@@ -413,7 +425,7 @@ app.clientside_callback(
     """
     function(category) {
         const isDisabled = category !== "name";
-        const placeholder = isDisabled ? null : "펀드명 입력";
+        const placeholder = isDisabled ? null : "펀드 이름으로 검색";
         return [isDisabled, placeholder, ""];
     }
     """,
@@ -426,7 +438,7 @@ app.clientside_callback(
 # multiple selection for name category
 app.clientside_callback(
     """
-    function(pattern, category, groups) {
+    function(pattern, category, groups, options) {
         // Return current groups if pattern is empty or category isn't 'name'
         if (!pattern || category !== "name") {
             return [groups, []];
@@ -443,9 +455,9 @@ app.clientside_callback(
                 .replace(/\\*/g, '.*');
             const regex = new RegExp('.*' + escaped + '.*', 'i');
 
-            // Filter and return matching values
+            // Filter and return options of matching values
             let filtered = names.filter(opt => regex.test(opt));
-            return [filtered, filtered];
+            return [filtered, options.filter(obj => filtered.includes(obj.value))];
         } catch (e) {
             console.error("Regex error:", e);
             return [groups, []];
@@ -453,17 +465,18 @@ app.clientside_callback(
     }
     """,
     Output('group-dropdown', 'value', allow_duplicate=True),
-    Output('fund-data', 'data'),
+    Output('name-data', 'data'),
     Input('name-input', 'value'),
     State('category-dropdown', 'value'),
     State('group-dropdown', 'value'),
+    State('group-dropdown', 'options'),
     prevent_initial_call=True
 )
 
 # update tickers based on selected groups and category
 app.clientside_callback(
     """
-    function(groups, category, previous, funds) {
+    function(groups, category, previous, names) {
         let tickers = [];
         const localCategory = dataCategory[category];
         if (!groups || !category || !localCategory) return [];
@@ -474,7 +487,7 @@ app.clientside_callback(
         const index = localgroups.findIndex(item => /^\\d+ funds selected$/.test(item));
         if (index !== -1) {
             // splice() modifies the original array and returns the removed elements, not the updated array
-            localgroups.splice(index, 1, ...funds);
+            localgroups.splice(index, 1, ...names.map(item => item.value));
         }
 
         // If "All" is selected, return all tickers in the category
@@ -521,7 +534,7 @@ app.clientside_callback(
     Input('group-dropdown', 'value'),
     State('category-dropdown', 'value'),
     State('previous-data', 'data'),
-    State('fund-data', 'data')
+    State('name-data', 'data')
 )
 
 # save name and ticker of funds for copying
