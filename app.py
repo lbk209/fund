@@ -370,7 +370,6 @@ app.clientside_callback(
         // replace fund names by 'N funds selected'
         let newnames = [];
         if (category === 'name') {
-            console.log('test1:', names.map(item => item.value));
             const selectedPattern = /^\\d+ funds selected$/;
             // nselected can have 'N funds selected' and additional fund names after removing *previous
             const nselected = groups_m.filter(group => !previous.includes(group));
@@ -385,7 +384,6 @@ app.clientside_callback(
                     localnames = nselected; // replace names with new selection
                 }                
             }
-            console.log('test2:', localnames);
             if (localnames.length > 0) {
                 const value = localnames.length + ' funds selected';
                 // set new group values
@@ -396,7 +394,6 @@ app.clientside_callback(
                 options = Array.from(new Map(merged.map(item => [item.value, item])).values());
                 
                 newnames = options.filter(obj => localnames.includes(obj.value)); // update options replaced by value
-                console.log('test3:', newnames.map(item => item.value));
                 // remove old nselected option and names replaced by the value
                 options = options.filter(obj => !selectedPattern.test(obj.value) && !localnames.includes(obj.value));
                 // add new nselected option
