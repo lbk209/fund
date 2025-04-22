@@ -368,48 +368,48 @@ app.clientside_callback(
         if (groups_m.includes('All')) {
             groups_m = groups_m.filter(group => group !== 'All');
         };
-        
+
         // replace fund names by 'N funds selected'
-        let newnames = [];
-        let localoptions = [...options];
+        let newNames = [];
+        let newOptions = [...options];
         if (category === 'name') {
             // option value for 'N funds selected'
             const selectedPattern = /^\\d+ funds selected$/;
             
-            // array of option value 'nselected' can have 'N funds selected' and additional fund names after removing *previous
-            const nselected = groups_m.filter(group => !previous.includes(group));
+            // array of option value 'nSelected' can have 'N funds selected' and additional fund names after removing *previous
+            const nSelected = groups_m.filter(group => !previous.includes(group));
             
             // refresh 'N funds selected' with additional funds names
-            let localnames = names.map(item => item.value); // new funds being added to 'N funds selected'
+            let nameValues = names.map(item => item.value); // new funds being added to 'N funds selected'
 
             // update fund names for new 'N funds selected'
-            if (nselected.some(group => selectedPattern.test(group))) {
-                additional = nselected.filter(group => !selectedPattern.test(group));
-                if (additional.length > 0) { // add additional to existing
-                    localnames = localnames.concat(additional);
+            if (nSelected.some(group => selectedPattern.test(group))) {
+                additionalValues = nSelected.filter(group => !selectedPattern.test(group));
+                if (additionalValues.length > 0) { // add additional to existing
+                    nameValues = nameValues.concat(additionalValues);
                 }
             } else { // no 'N funds selected' exists
-                if (nselected.length > 0) {
-                    localnames = nselected; // replace names with new selection
+                if (nSelected.length > 0) {
+                    nameValues = nSelected; // replace names with new selection
                 }                
             }
             
-            if (localnames.length > 0) {
+            if (nameValues.length > 0) {
                 // set new group values
-                const value = localnames.length + ' funds selected';
+                const value = nameValues.length + ' funds selected';
                 groups_m = [...groups_m.filter(group => previous.includes(group)), value];
 
-                // set options for localnames from full fund name options
-                newnames = allnames.filter(obj => localnames.includes(obj.value));
+                // set options for nameValues from full fund name options
+                newNames = allnames.filter(obj => nameValues.includes(obj.value));
                 
                 // set new options
-                localoptions = allnames.filter(obj => !localnames.includes(obj.value));
-                localoptions = [...localoptions, {'label':value, 'value':value}];
+                newOptions = allnames.filter(obj => !nameValues.includes(obj.value));
+                newOptions = [...newOptions, {'label':value, 'value':value}];
             }
         }
         // return the array with new rank option
         let result = groups_m.concat(group_opt).filter(Boolean);
-        return [result, localoptions, newnames];
+        return [result, newOptions, newNames];
     }
     """,
     Output('group-dropdown', 'value', allow_duplicate=True),
