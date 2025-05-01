@@ -2,7 +2,12 @@ window.calculateCAGR = function(data_tkr) {
     if (!data_tkr || Object.keys(data_tkr).length < 2) return "Invalid data";
 
     // Convert date keys to an array and sort them in ascending order
-    let dates = Object.keys(data_tkr).sort();
+    let dates = Object.keys(data_tkr)
+        .filter(date => {
+            const value = data_tkr[date];
+            return value != null && !Number.isNaN(value);
+        })
+        .sort();
     
     // First and last values
     let initialValue = data_tkr[dates[0]];
