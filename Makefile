@@ -23,12 +23,12 @@ run_app:
 	mkdir -p pages_files/assets
 	cp -R assets/* pages_files/assets/
 
-	find pages_files -exec sed -i.bak 's|_dash-component-suites|fund\\/_dash-component-suites|g' {} \;
-	find pages_files -exec sed -i.bak 's|_dash-layout|fund/_dash-layout.json|g' {} \;
-	find pages_files -exec sed -i.bak 's|_dash-dependencies|fund/_dash-dependencies.json|g' {} \;
-	find pages_files -exec sed -i.bak 's|_reload-hash|fund/_reload-hash|g' {} \;
-	find pages_files -exec sed -i.bak 's|_dash-update-component|fund/_dash-update-component|g' {} \;
-	find pages_files -exec sed -i.bak 's|assets|fund/assets|g' {} \;
+	find pages_files -exec sed -i.bak 's|_dash-component-suites|macro\\/_dash-component-suites|g' {} \;
+	find pages_files -exec sed -i.bak 's|_dash-layout|macro/_dash-layout.json|g' {} \;
+	find pages_files -exec sed -i.bak 's|_dash-dependencies|macro/_dash-dependencies.json|g' {} \;
+	find pages_files -exec sed -i.bak 's|_reload-hash|macro/_reload-hash|g' {} \;
+	find pages_files -exec sed -i.bak 's|_dash-update-component|macro/_dash-update-component|g' {} \;
+	find pages_files -exec sed -i.bak 's|assets|macro/assets|g' {} \;
 
 	mv pages_files/_dash-layout pages_files/_dash-layout.json
 	mv pages_files/_dash-dependencies pages_files/_dash-dependencies.json
